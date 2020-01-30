@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include "GL/glew.h"
 #include "GL/3dgl.h"
 #include "GL/glut.h"
@@ -23,6 +24,13 @@ C3dglModel vase;
 C3dglModel table;
 C3dglModel horse;
 C3dglModel lamp;
+
+// bitmaps
+C3dglBitmap bm;
+GLuint idTexWood;
+GLuint idTexFabric;
+GLuint idTexNone;
+GLuint idTexMetallicBrushed;
 
 //(W2,step 2, GLSL Program
 C3dglProgram Program;
@@ -66,6 +74,10 @@ float angleTilt = 15;		// Tilt Angle
 float angleRot = 0.1f;		// Camera orbiting angle
 vec3 cam(0);				// Camera movement values
 
+int lamp1 = 0; // initially, point lights are OFF
+int lamp2 = 0;  // these are used in PointLightSwitching function for toggling lamp lighting
+
+
 bool init()
 {
 	// rendering states
@@ -73,11 +85,6 @@ bool init()
 	glEnable(GL_NORMALIZE);		// normalization is needed by AssImp library models
 	glShadeModel(GL_SMOOTH);	// smooth shading mode is the default one; try GL_FLAT here!
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);	// this is the default one; try GL_LINE!
-
-	//// setup lighting
-	//glEnable(GL_LIGHTING);									// --- DEPRECATED
-	//glEnable(GL_LIGHT0);	
-	// --- DEPRECATED
 
 	//Initialise shaders, this sets up the programmable pipeline
 	C3dglShader VertexShader;
@@ -120,6 +127,45 @@ bool init()
 	if (!horse.load("models\\SHIRE_01.obj")) return false;
 	if (!lamp.load("models\\lamp.obj")) return false;
 
+	// bitmap textures
+	bm.Load("models/oak.png", GL_RGBA); if (!bm.GetBits()) return false; //wooden
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &idTexWood);
+	glBindTexture(GL_TEXTURE_2D, idTexWood);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
+		GL_UNSIGNED_BYTE, bm.GetBits());
+	//glActiveTexture(GL_TEXTURE0); // for multitexturing, not required here
+	
+
+	glGenTextures(1, &idTexNone); //blank for solid colour objects
+	glBindTexture(GL_TEXTURE_2D, idTexNone);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	BYTE bytes[] = { 255, 255, 255 };
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_BGR, GL_UNSIGNED_BYTE, &bytes);
+	
+	
+	bm.Load("models/fabric.png", GL_RGBA); if (!bm.GetBits()) return false; //fabric
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &idTexFabric);
+	glBindTexture(GL_TEXTURE_2D, idTexFabric);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
+		GL_UNSIGNED_BYTE, bm.GetBits());
+	
+	
+	bm.Load("models/goldy.png", GL_RGBA); if (!bm.GetBits()) return false; //golden
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &idTexMetallicBrushed);
+	glBindTexture(GL_TEXTURE_2D, idTexMetallicBrushed);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
+		GL_UNSIGNED_BYTE, bm.GetBits());
+
+	// Send the texture info to the shaders
+	Program.SendUniform("texture0", 0);
+
+
 	// Initialise the View Matrix (initial position of the camera)
 	matrixView = rotate(mat4(1.f), radians(angleTilt), vec3(1.f, 0.f, 0.f));
 	matrixView *= lookAt(
@@ -136,6 +182,7 @@ bool init()
 	cout << "  QE or PgUp/Dn to move the camera up and down" << endl;
 	cout << "  Shift+AD or arrow key to auto-orbit" << endl;
 	cout << "  Drag the mouse to look around" << endl;
+	cout << "  Press 1 or 2 to toggle lighting of lamps" << endl;
 	cout << endl;
 
 	return true;
@@ -162,54 +209,53 @@ void render()
 	matrixView = m;
 	Program.SendUniform("matrixView", matrixView);
 
-	//W2, step 4.2, replace deprecated code
+	// LIGHTING and initial light settings
 	Program.SendUniform("lightAmbient.on", 1);
 	Program.SendUniform("lightAmbient.color", 0.1, 0.1, 0.1);
 	Program.SendUniform("materialAmbient", 1.0, 1.0, 1.0);
 
 	Program.SendUniform("lightDir.on", 1);
 	Program.SendUniform("lightDir.direction", 1.0, 0.5, 1.0);
-	Program.SendUniform("lightDir.diffuse", 0.8, 0.8, 0.8);	  // dimmed white light
-	Program.SendUniform("materialDiffuse", 0.2, 0.2, 0.6);
-
-	Program.SendUniform("lightPoint1.on", 1);
-	Program.SendUniform("lightPoint1.position", -1.5, 12.0, -4.0);
-	Program.SendUniform("lightPoint1.diffuse", 0.4, 0.4, 0.4); //brightness
-	//Program.SendUniform("materialDiffuse", 0.2, 0.2, 0.6);
+	Program.SendUniform("lightDir.diffuse", 0.2, 0.2, 0.2);	  // dimmed white light
+	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0); // color of the light
+	
+	Program.SendUniform("lightPoint1.position", -1.55, 13.9, -4.0);
+	Program.SendUniform("lightPoint1.diffuse", 0.5, 0.5, 0.5); //brightness
+	
 	Program.SendUniform("lightPoint1.specular", 1.0,1.0,1.0); //brightestness .0 to 1.0
-	//Program.SendUniform("materialSpecular", 0.6,0.6,1.0); //colouring
-	//Program.SendUniform("shininess", 3.0); //shine
-
-	Program.SendUniform("lightPoint2.on", 1);
-	Program.SendUniform("lightPoint2.position", 13.5, 12.0, 4.0);
-	Program.SendUniform("lightPoint2.diffuse", 0.4, 0.4, 0.4); //brightness
+	
+	Program.SendUniform("lightPoint2.position", 13.45, 13.9, 4.0);
+	Program.SendUniform("lightPoint2.diffuse", 0.5, 0.5, 0.5); //brightness
 	
 	Program.SendUniform("lightPoint2.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
-	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring
-	Program.SendUniform("shininess", 3.0); //shine
-
-	//Program.SendUniform("material", 0.6f, 0.6f, 0.6f);
-
-	//// camera
-	//m = matrixView;
-	//m = translate(m, vec3(-3.0f, 0, 0.0f));	
-	//m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
-	//m = scale(m, vec3(0.04f, 0.04f, 0.04f));
-	//camera.render(m);
+	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection
+	Program.SendUniform("shininess", 20.0); //shine
 	
-	// spheres (light bulbs, visual for light point positions)
+	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
+
+	// spheres (light bulbs, visual for light point positions, emmisive lighting)
+	
+	Program.SendUniform("lightAmbient2.on", 1); // for emissive light bulb effect
+	
 	m = matrixView;
-	m = translate(m, vec3(-1.5f, 14.0f, -4.0f));
+	m = translate(m, vec3(-1.55f, 13.9f, -4.0f));
+	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
+	Program.SendUniform("matrixModelView", m);
+	glutSolidSphere(1, 32, 32);
+	
+	Program.SendUniform("lightAmbient2.on", 0);
+
+	Program.SendUniform("lightAmbient3.on", 1);
+	m = matrixView;
+	m = translate(m, vec3(13.45f, 13.9f, 4.0f));
 	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
 	Program.SendUniform("matrixModelView", m);
 	glutSolidSphere(1, 32, 32);
 
-	m = matrixView;
-	m = translate(m, vec3(13.5f, 14.0f, 4.0f));
-	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
-	Program.SendUniform("matrixModelView", m);
-	glutSolidSphere(1, 32, 32);
-
+	Program.SendUniform("lightAmbient3.on", 0);
+	
+	Program.SendUniform("materialDiffuse", 1.0, 0.0, 0.0); // red lamp models
+	glBindTexture(GL_TEXTURE_2D, idTexNone);
 	//lamp 1
 	m = matrixView;
 	m = translate(m, vec3(1.0f, 9.7f, -4.0f));
@@ -223,8 +269,10 @@ void render()
 	m = rotate(m, radians(0.0f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.07f, 0.07f, 0.07f));
 	lamp.render(m);
+
 	// vase
-	//Program.SendUniform("material", 0.80f, 0.67f, 0.0f); //colour
+	Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue vase
+	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
 	m = matrixView;
 	m = translate(m, vec3(9.0f, 9.7f, 0.0f));
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
@@ -232,23 +280,36 @@ void render()
 	vase.render(m);
 	
 	//extra obj - horse
-	//Program.SendUniform("material", 1.0f, 0.5f, 1.0f);
+	glBindTexture(GL_TEXTURE_2D, idTexMetallicBrushed); //gold texture
+	Program.SendUniform("shininess", 50.0); //more shiny
+	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
+	Program.SendUniform("materialSpecular", 0.95, 0.85, 0.3); //colouring of reflection is gold
+	
 	m = matrixView;
 	m = translate(m, vec3(2.8f, 12.5f, 3.0f));
 	m = rotate(m, radians(230.0f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.01f, 0.01f, 0.01f));
 	horse.render(m);
-	
-	//table with a chair
-	//Program.SendUniform("material", 0.4f, 0.26f, 0.13f);
-	Program.SendUniform("materialSpecular", 0.0, 0.0, 0.0);
+
+	Program.SendUniform("shininess", 20.0); //shine reverted to 20
+	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection reverted
+	//table
+	glBindTexture(GL_TEXTURE_2D, idTexWood);
+	Program.SendUniform("materialSpecular", 0.0, 0.0, 0.0); //black makes the table and chairs non-shiny
 	m = matrixView;
 	m = translate(m, vec3(9.0f, -1, 0.0f));
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
-	table.render(m);
+	table.render(1,m);
 
 	//chairs
+	glBindTexture(GL_TEXTURE_2D, idTexFabric);
+
+	m = matrixView;
+	m = translate(m, vec3(8.0f, -1, -0.0f));
+	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
+	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
+	table.render(0, m);
 
 	m = matrixView;
 	m = translate(m, vec3(12.0f, -1, 0.0f));
@@ -268,20 +329,18 @@ void render()
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
 	table.render(0, m);
 
-	// setup materials - blue
-	//Program.SendUniform("material", 0.5f, 0.8f, 1.0f);													
+	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
+	
 	// teapot
+	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0); // purple 
+	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
 	m = matrixView;
 	m = translate(m, vec3(15.0f, 10.75f, 0.0f));
 	m = rotate(m, radians(30.0f), vec3(0.0f, 1.0f, 0.0f));
 	// the GLUT objects require the Model View Matrix setup
 	Program.SendUniform("matrixModelView", m);
-	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
 	glutSolidTeapot(1.5);
 	
-	
-	
-
 	// Get Attribute Locations
 	GLuint attribVertex = Program.GetAttribLocation("aVertex");
 	GLuint attribNormal = Program.GetAttribLocation("aNormal");
@@ -327,6 +386,43 @@ void reshape(int w, int h)
 
 }
 
+void PointLightSwitching(int PLightID)
+{
+	if (PLightID == 1)
+	{
+		if (lamp1 == 0) 
+		{
+			Program.SendUniform("lightAmbient2.color", 0.8, 0.8, 0.8);
+			Program.SendUniform("lightPoint1.on", 1); 
+			lamp1 += 1; return; 
+		}
+		else if (lamp1 == 1)
+		{
+			Program.SendUniform("lightAmbient2.color", 0.0, 0.0, 0.0);
+			Program.SendUniform("lightPoint1.on", 0);
+			lamp1 -= 1;
+			return;
+		}
+	}
+	else if (PLightID == 2)
+	{
+		if (lamp2 == 0) 
+		{
+			Program.SendUniform("lightAmbient3.color", 0.8, 0.8, 0.8);
+			Program.SendUniform("lightPoint2.on", 1);
+			lamp2 += 1; std::cout << lamp2 << endl;
+			return;
+		}
+		else if (lamp2 == 1)
+		{
+			Program.SendUniform("lightAmbient3.color", 0.0, 0.0, 0.0);
+			Program.SendUniform("lightPoint2.on", 0);
+			lamp2 -= 1;
+			std::cout << lamp2 << endl;
+			return;
+		}
+	}
+}	
 // Handle WASDQE keys
 void onKeyDown(unsigned char key, int x, int y)
 {
@@ -338,6 +434,15 @@ void onKeyDown(unsigned char key, int x, int y)
 	case 'd': cam.x = std::min(cam.x * 1.05f, -0.01f); angleRot = -0.1f; break;
 	case 'e': cam.y = std::max(cam.y * 1.05f, 0.01f); break;
 	case 'q': cam.y = std::min(cam.y * 1.05f, -0.01f); break;
+	case '1':
+
+		PointLightSwitching(1);
+
+		break;
+
+	case '2':
+		PointLightSwitching(2);
+		break;
 	}
 	// speed limit
 	cam.x = std::max(-0.15f, std::min(0.15f, cam.x));
@@ -346,6 +451,7 @@ void onKeyDown(unsigned char key, int x, int y)
 	// stop orbiting
 	if ((glutGetModifiers() & GLUT_ACTIVE_SHIFT) == 0) angleRot = 0;
 }
+
 
 // Handle WASDQE keys (key up)
 void onKeyUp(unsigned char key, int x, int y)
