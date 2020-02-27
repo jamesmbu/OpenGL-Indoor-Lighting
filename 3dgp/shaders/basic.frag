@@ -23,6 +23,41 @@ out vec4 outColor;
 
 in vec2 texCoord0; // bitmap
 
+struct SPOT
+{
+	int on;
+	vec3 position;
+	vec3 diffuse;
+	vec3 specular;
+
+	vec3 direction;
+	float cutoff;
+	float attenuation;
+};
+uniform POINT spotLight1;
+
+vec4 SpotLight(SPOT light)
+{
+	// Calculate Point Light
+	vec4 color = vec4(0, 0, 0, 0);
+	//vec3 L = (normalize((matrixView) * vec4(light.position, 1) - position)).xyz;
+	vec3 L = normalize((matrixView * (vec4(light.position, 1))) - position).xyz;
+	
+	float NdotL = dot(normal, L);
+	
+	if (NdotL > 0)
+		color += vec4(materialDiffuse * light.diffuse, 1) * NdotL;
+	
+	vec3 V = normalize(-position.xyz);
+	vec3 R = reflect(-L, normal);
+	float RdotV = dot(R, V);	
+	if (NdotL > 0 && RdotV > 0)
+	    color += vec4(materialSpecular * light.specular * pow(RdotV, shininess), 1);
+
+	vec3 D = normalize((matrixView * (vec4(light.direction, 1)))).xyz;
+	return color;
+}
+
 struct POINT
 {
 	int on;
@@ -63,5 +98,7 @@ void main(void)
 	if (lightPoint2.on == 1) 
 		outColor += PointLight(lightPoint2);
 
+	if (spotLight1.on == 1)
+		outColor += SpotLight(spotLight1);
 	outColor *= texture(texture0, texCoord0);
 }
