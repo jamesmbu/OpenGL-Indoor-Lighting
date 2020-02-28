@@ -77,6 +77,13 @@ vec3 cam(0);				// Camera movement values
 int lamp1 = 0; // initially, point lights are OFF
 int lamp2 = 0;  // these are used in PointLightSwitching function for toggling lamp lighting
 
+void InitialiseVertexBuffer() // Full explanation: https://paroj.github.io/gltut/Basics/Tut01%20Following%20the%20Data.html
+{
+	glGenBuffers(1, &vertexBuffer); // creation of buffer object, but has no memory uyet
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer); // binds the new buffer object to the proper role
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // allocates memory to buffer, integrates the vertices array
+	glBindBuffer(GL_ARRAY_BUFFER, 0); // cleanup, not neccesary, but good practice
+}
 
 bool init()
 {
@@ -106,9 +113,7 @@ bool init()
 	glutSetVertexAttribNormal(Program.GetAttribLocation("aNormal"));
 
 	// prepare vertex data
-	glGenBuffers(1, &vertexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	InitialiseVertexBuffer();
 
 	// prepare normal data
 	glGenBuffers(1, &normalBuffer);
