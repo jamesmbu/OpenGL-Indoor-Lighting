@@ -85,7 +85,7 @@ vec4 SpotLight(SPOT light)
 	if (NdotL > 0 && RdotV > 0)
 	    color += vec4(materialSpecular * light.specular * pow(RdotV, shininess), 1);
 
-	vec3 D = normalize((matrixView * (vec4(light.direction, 1)))).xyz;
+	vec3 D = normalize(mat3(matrixView) * (light.direction));
 	float spotFactor = dot(-L, D);
 	float angle_ = acos(spotFactor);
 	if (angle_ <= clamp(radians(light.cutoff),0.0f,90.0f))

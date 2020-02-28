@@ -240,9 +240,6 @@ void done()
 
 void render() // updates the display
 {
-	float fXOffset = 0.0f, fYOffset = 0.0f;
-	ComputePositionOffsets(fXOffset, fYOffset);
-	AdjustVertexData(fXOffset, fYOffset);
 
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
@@ -287,8 +284,8 @@ void render() // updates the display
 	Program.SendUniform("spotLight1.specular", 1.0, 1.0, 1.0);
 
 	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
-	Program.SendUniform("spotLight1.cutoff", 45.0f);
-	Program.SendUniform("spotLight1.attenuation", 6.0f);
+	Program.SendUniform("spotLight1.cutoff", 20.0f);
+	Program.SendUniform("spotLight1.attenuation", 2.0f);
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 
