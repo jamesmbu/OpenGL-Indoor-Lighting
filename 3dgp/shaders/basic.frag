@@ -42,7 +42,8 @@ vec4 SpotLight(SPOT light)
 	vec4 color = vec4(0, 0, 0, 0);
 	//vec3 L = (normalize((matrixView) * vec4(light.position, 1) - position)).xyz;
 	vec3 L = normalize((matrixView * (vec4(light.position, 1))) - position).xyz;
-	
+
+
 	float NdotL = dot(normal, L);
 	
 	if (NdotL > 0)
@@ -55,6 +56,7 @@ vec4 SpotLight(SPOT light)
 	    color += vec4(materialSpecular * light.specular * pow(RdotV, shininess), 1);
 
 	vec3 D = normalize((matrixView * (vec4(light.direction, 1)))).xyz;
+	vec3 spotFactor = dot(-L, D)
 	return color;
 }
 

@@ -290,7 +290,7 @@ void render()
 	m = matrixView;
 	m = translate(m, vec3(2.8f, 12.5f, 3.0f));
 	m = rotate(m, radians(230.0f), vec3(0.0f, 1.0f, 0.0f));
-	m = scale(m, vec3(0.01f, 0.01f, 0.01f));
+	m = scale(m,vec3(0.01f, 0.01f, 0.01f));
 	horse.render(m);
 
 	Program.SendUniform("shininess", 20.0); //shine reverted to 20
