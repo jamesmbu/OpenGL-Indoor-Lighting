@@ -72,9 +72,7 @@ vec4 SpotLight(SPOT light)
 {
 	// Calculate Point Light
 	vec4 color = vec4(0, 0, 0, 0);
-	//vec3 L = (normalize((matrixView) * vec4(light.position, 1) - position)).xyz;
 	vec3 L = normalize((matrixView * (vec4(light.position, 1))) - position).xyz;
-
 
 	float NdotL = dot(normal, L);
 	
@@ -90,6 +88,14 @@ vec4 SpotLight(SPOT light)
 	vec3 D = normalize((matrixView * (vec4(light.direction, 1)))).xyz;
 	float spotFactor = dot(-L, D);
 	float angle_ = acos(spotFactor);
+	if (angle_ <= clamp(radians(light.cutoff),0.0f,90.0f))
+	{
+		spotFactor = pow(spotFactor, light.attenuation);
+	}
+	else if (angle_ > clamp(radians(light.cutoff),0.0f,90.0f))
+	{
+		spotFactor = 0.0f;
+	}
 	return spotFactor * color;
 }
 

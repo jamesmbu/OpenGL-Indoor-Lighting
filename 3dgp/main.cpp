@@ -13,7 +13,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 #pragma comment (lib, "glew32.lib")
-
+#define ARRAY_COUNT( array ) (sizeof( array ) / (sizeof( array[0] ) * (sizeof( array ) != sizeof(void*) || sizeof( array[0] ) <= sizeof(void*))))
 using namespace std;
 using namespace _3dgl;
 using namespace glm;
@@ -81,9 +81,27 @@ void InitialiseVertexBuffer() // Full explanation: https://paroj.github.io/gltut
 {
 	glGenBuffers(1, &vertexBuffer); // creation of buffer object, but has no memory uyet
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer); // binds the new buffer object to the proper role
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // allocates memory to buffer, integrates the vertices array
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW); // allocates memory to buffer, integrates the vertices array
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // cleanup, not neccesary, but good practice
 }
+
+void InitialiseNormalBuffer()
+{
+	glGenBuffers(1, &normalBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STREAM_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void InitialiseIndexBuffer()
+{
+	glGenBuffers(1, &indexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STREAM_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+
 
 bool init()
 {
@@ -116,14 +134,9 @@ bool init()
 	InitialiseVertexBuffer();
 
 	// prepare normal data
-	glGenBuffers(1, &normalBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STATIC_DRAW);
-
+	InitialiseNormalBuffer();
 	// prepare indices array
-	glGenBuffers(1, &indexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	InitialiseIndexBuffer();
 
 	// load your 3D models here!
 	if (!camera.load("models\\camera.3ds")) return false;
@@ -193,12 +206,44 @@ bool init()
 	return true;
 }
 
+void ComputePositionOffsets(float& fXOffset, float& fYOffset)
+{
+	const float fLoopDuration = 5.0f;
+	const float fScale = 3.14159f * 2.0f / fLoopDuration;
+
+	float fElapsedTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+
+	float fCurrTimeThroughLoop = fmodf(fElapsedTime, fLoopDuration);
+
+	fXOffset = cosf(fCurrTimeThroughLoop * fScale) * 0.5f;
+	fYOffset = sinf(fCurrTimeThroughLoop * fScale) * 0.5f;
+}
+
+void AdjustVertexData(float fXOffset, float fYOffset)
+{
+	std::vector<float> fNewData(ARRAY_COUNT(vertices));
+	memcpy(&fNewData[0], vertices, sizeof(vertices));
+
+	for (int iVertex = 0; iVertex < ARRAY_COUNT(vertices); iVertex += 4)
+	{
+		fNewData[iVertex] += fXOffset;
+		fNewData[iVertex + 1] += fYOffset;
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &fNewData[0]);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
 void done()
 {
 }
 
-void render()
+void render() // updates the display
 {
+	float fXOffset = 0.0f, fYOffset = 0.0f;
+	ComputePositionOffsets(fXOffset, fYOffset);
+	AdjustVertexData(fXOffset, fYOffset);
+
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
 
