@@ -281,6 +281,15 @@ void render() // updates the display
 	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection
 	Program.SendUniform("shininess", 20.0); //shine
 	
+	Program.SendUniform("spotLight1.on", 1);
+	Program.SendUniform("spotLight1.position", 13.45, 13.9, 4.0);
+	Program.SendUniform("spotLight1.diffuse", 0.5, 0.5, 0.5); //brightness
+	Program.SendUniform("spotLight1.specular", 1.0, 1.0, 1.0);
+
+	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
+	Program.SendUniform("spotLight1.cutoff", 45.0f);
+	Program.SendUniform("spotLight1.attenuation", 6.0f);
+
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 
 	// spheres (light bulbs, visual for light point positions, emmisive lighting)
