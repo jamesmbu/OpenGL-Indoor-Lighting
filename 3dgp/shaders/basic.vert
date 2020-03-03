@@ -16,8 +16,6 @@ layout (location = 0) in vec3 aVertex;
 layout (location = 2) in vec3 aNormal;
 layout (location = 3) in vec2 aTexCoord;
 
-uniform vec2 offset;
-
 out vec4 color;
 out vec4 position; // output variables sent off to the fragment shader
 out vec3 normal;
@@ -60,8 +58,6 @@ vec4 DirectionalLight(DIRECTIONAL light)
 
 void main(void) 
 {
-	// offset calculations
-	vec4 totalOffset = vec4(offset.x, offset.y, 0.0, 0.0);
 	// calculate texture coordinate
 	texCoord0 = aTexCoord;
 

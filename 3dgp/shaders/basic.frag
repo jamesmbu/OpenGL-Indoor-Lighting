@@ -31,6 +31,8 @@ struct POINT
 	vec3 position;
 	vec3 diffuse;
 	vec3 specular;
+
+	mat4 matrix;
 };
 uniform POINT lightPoint1, lightPoint2;
 
@@ -38,8 +40,8 @@ vec4 PointLight(POINT light)
 {
 	// Calculate Point Light
 	vec4 color = vec4(0, 0, 0, 0);
-	//vec3 L = (normalize((matrixView) * vec4(light.position, 1) - position)).xyz;
-	vec3 L = normalize((matrixView * (vec4(light.position, 1))) - position).xyz;
+	//vec3 L = (normalize((light.matrix) * vec4(light.position, 1) - position)).xyz;
+	vec3 L = normalize((light.matrix * (vec4(light.position, 1))) - position).xyz;
 	
 	float NdotL = dot(normal, L);
 	
@@ -65,6 +67,8 @@ struct SPOT
 	vec3 direction;
 	float cutoff;
 	float attenuation;
+
+	mat4 matrix;
 };
 uniform SPOT spotLight1;
 
@@ -72,7 +76,7 @@ vec4 SpotLight(SPOT light)
 {
 	// Calculate Point Light
 	vec4 color = vec4(0, 0, 0, 0);
-	vec3 L = normalize((matrixView * (vec4(light.position, 1))) - position).xyz;
+	vec3 L = normalize((light.matrix * (vec4(light.position, 1))) - position).xyz;
 
 	float NdotL = dot(normal, L);
 	
@@ -85,7 +89,7 @@ vec4 SpotLight(SPOT light)
 	if (NdotL > 0 && RdotV > 0)
 	    color += vec4(materialSpecular * light.specular * pow(RdotV, shininess), 1);
 
-	vec3 D = normalize(mat3(matrixView) * (light.direction));
+	vec3 D = normalize(mat3(light.matrix) * (light.direction));
 	float spotFactor = dot(-L, D);
 	float angle_ = acos(spotFactor);
 	if (angle_ <= clamp(radians(light.cutoff),0.0f,90.0f))
