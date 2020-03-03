@@ -298,9 +298,7 @@ void render() // updates the display
 	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
 	Program.SendUniform("matrixModelView", m);
 	glutSolidSphere(1, 32, 32);
-	//Comment for testing git
-	//hwllo 
-	//more tests
+	
 	Program.SendUniform("lightAmbient2.on", 0);
 
 	Program.SendUniform("lightAmbient3.on", 1);
