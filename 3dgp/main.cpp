@@ -284,8 +284,8 @@ void render() // updates the display
 	Program.SendUniform("spotLight1.specular", 1.0, 1.0, 1.0);
 
 	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
-	Program.SendUniform("spotLight1.cutoff", 30.0f);
-	Program.SendUniform("spotLight1.attenuation", 18.0f);
+	Program.SendUniform("spotLight1.cutoff", 20.0f);
+	Program.SendUniform("spotLight1.attenuation", 2.0f);
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 
@@ -297,7 +297,6 @@ void render() // updates the display
 	m = translate(m, vec3(-1.55f, 13.9f, -4.0f));
 	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
 	Program.SendUniform("matrixModelView", m);
-	Program.SendUniform("lightSpot.matrix", m);
 	glutSolidSphere(1, 32, 32);
 	//Comment for testing git
 	//hwllo 
