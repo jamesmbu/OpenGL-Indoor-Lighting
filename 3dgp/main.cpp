@@ -37,29 +37,15 @@ C3dglProgram Program;
 
 // Vertex buffers
 float vertices[] = {
-	-10, 1.8, -1,
-	-14, 1.8, -1,
-	-12, -1.15, -3,
-	-10, 1.8, -5,
-	-14, 1.8, -5,
-	-12, -1.15, -3,
-	-10, 1.8, -1,
-	-10, 1.8, -5,
-	-12, -1.15, -3,
-	-14, 1.8, -1,
-	-14, 1.8, -5,
-	-12, -1.15, -3,
-	-10, 1.8, -1,
-	-10, 1.8, -5,
-	-14, 1.8, -1,
-	-14, 1.8, -5
-};
+		-4, 0, -4, 4, 0, -4, 0, 7, 0, -4, 0, 4, 4, 0, 4, 0, 7, 0,
+		-4, 0, -4, -4, 0, 4, 0, 7, 0, 4, 0, -4, 4, 0, 4, 0, 7, 0,
+		-4, 0, -4, -4, 0, 4, 4, 0, -4, 4, 0, 4 };
 float normals[] = {
 	0, 4, -7, 0, 4, -7, 0, 4, -7, 0, 4, 7, 0, 4, 7, 0, 4, 7,
 	-7, 4, 0, -7, 4, 0, -7, 4, 0, 7, 4, 0, 7, 4, 0, 7, 4, 0,
 	0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0 };
 unsigned indices[] = {
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 13, 14, 15 };
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 13, 14, 15 };
 
 
 
@@ -252,7 +238,7 @@ void render() // updates the display
 	m = translate(m, cam);												// animate camera motion (controlled by WASD keys)
 	m = rotate(m, radians(-angleTilt), vec3(1.f, 0.f, 0.f));			// switch tilt on
 	m = m * matrixView;
-	//m = rotate(m, radians(angleRot), vec3(0.f, 1.f, 0.f));				// animate camera orbiting
+	m = rotate(m, radians(angleRot), vec3(0.f, 1.f, 0.f));				// animate camera orbiting
 	matrixView = m;
 	Program.SendUniform("matrixView", matrixView);
 
@@ -284,15 +270,14 @@ void render() // updates the display
 	Program.SendUniform("spotLight1.specular", 1.0, 1.0, 1.0);
 
 	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
-	Program.SendUniform("spotLight1.cutoff", 20.0f);
-	Program.SendUniform("spotLight1.attenuation", 2.0f);
+	Program.SendUniform("spotLight1.cutoff", 50.0f);
+	Program.SendUniform("spotLight1.attenuation", 7.0f);
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 
 	// spheres (light bulbs, visual for light point positions, emmisive lighting)
 	
 	Program.SendUniform("lightAmbient2.on", 1); // for emissive light bulb effect
-	
 	m = matrixView;
 	m = translate(m, vec3(-1.55f, 13.9f, -4.0f));
 	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
@@ -300,7 +285,6 @@ void render() // updates the display
 	glutSolidSphere(1, 32, 32);
 	
 	Program.SendUniform("lightAmbient2.on", 0);
-
 	Program.SendUniform("lightAmbient3.on", 1);
 	m = matrixView;
 	m = translate(m, vec3(13.45f, 13.9f, 4.0f));
@@ -336,16 +320,11 @@ void render() // updates the display
 	vase.render(m);
 	
 	//extra obj - horse
-	glBindTexture(GL_TEXTURE_2D, idTexMetallicBrushed); //gold texture
-	Program.SendUniform("shininess", 50.0); //more shiny
-	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
-	Program.SendUniform("materialSpecular", 0.95, 0.85, 0.3); //colouring of reflection is gold
 	
-	m = matrixView;
-	m = translate(m, vec3(2.8f, 12.5f, 3.0f));
-	m = rotate(m, radians(230.0f), vec3(0.0f, 1.0f, 0.0f));
-	m = scale(m,vec3(0.01f, 0.01f, 0.01f));
-	horse.render(m);
+	
+	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
+	
+	
 
 	Program.SendUniform("shininess", 20.0); //shine reverted to 20
 	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection reverted
@@ -387,7 +366,7 @@ void render() // updates the display
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 	
-	// teapot
+	//teapot
 	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0); // purple 
 	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
 	m = matrixView;
@@ -396,7 +375,17 @@ void render() // updates the display
 	// the GLUT objects require the Model View Matrix setup
 	Program.SendUniform("matrixModelView", m);
 	glutSolidTeapot(1.5);
-	
+
+	//pyramid
+	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0);
+	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
+	m = matrixView;
+	m = translate(m, vec3(2.8f, 12.5f, 3.0f));
+	m = rotate(m, radians(180.f), vec3(1, 0, 0));
+	m = rotate(m, radians(-4 * theta), vec3(0, 1, 0));
+	m = scale(m, vec3(0.4f, 0.4f, 0.4f));
+	Program.SendUniform("matrixModelView", m);
+
 	// Get Attribute Locations
 	GLuint attribVertex = Program.GetAttribLocation("aVertex");
 	GLuint attribNormal = Program.GetAttribLocation("aNormal");
@@ -420,6 +409,16 @@ void render() // updates the display
 	// Disable arrays
 	glDisableVertexAttribArray(attribVertex);
 	glDisableVertexAttribArray(attribNormal);
+
+	//extra obj - horse
+	glBindTexture(GL_TEXTURE_2D, idTexMetallicBrushed); //gold texture
+	Program.SendUniform("shininess", 50.0); //more shiny
+	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
+	Program.SendUniform("materialSpecular", 0.95, 0.85, 0.3); //colouring of reflection is gold
+	m = translate(m, vec3(0, 0, 0));
+	m = rotate(m, radians(180.0f), vec3(1.0f, 0.0f, 0.0f));
+	m = scale(m, vec3(0.02f, 0.02f, 0.02f));
+	horse.render(m);
 
 	// essential for double-buffering technique
 	glutSwapBuffers();
