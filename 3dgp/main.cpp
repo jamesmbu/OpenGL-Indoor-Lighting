@@ -24,6 +24,7 @@ C3dglModel vase;
 C3dglModel table;
 C3dglModel horse;
 C3dglModel lamp;
+C3dglModel ceilinglamp;
 
 // bitmaps
 C3dglBitmap bm;
@@ -87,7 +88,15 @@ void InitialiseIndexBuffer()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-
+bool Load3DModels()
+{
+	if (!camera.load("models\\camera.3ds")) return false;
+	if (!vase.load("models\\vase.obj")) return false;
+	if (!table.load("models\\table.obj")) return false;
+	if (!horse.load("models\\SHIRE_01.obj")) return false;
+	if (!lamp.load("models\\lamp.obj")) return false;
+	if (!ceilinglamp.load("models\\ceilinglamp.3ds")) return false;
+}
 
 bool init()
 {
@@ -118,20 +127,17 @@ bool init()
 
 	// prepare vertex data
 	InitialiseVertexBuffer();
-
 	// prepare normal data
 	InitialiseNormalBuffer();
 	// prepare indices array
 	InitialiseIndexBuffer();
 
 	// load your 3D models here!
-	if (!camera.load("models\\camera.3ds")) return false;
-	if (!vase.load("models\\vase.obj")) return false;
-	if (!table.load("models\\table.obj")) return false;
-	if (!horse.load("models\\SHIRE_01.obj")) return false;
-	if (!lamp.load("models\\lamp.obj")) return false;
+	
+	Load3DModels();
 
-	// bitmap textures
+	/////////////////////// BITMAP TEXTURES
+	// Oak
 	bm.Load("models/oak.png", GL_RGBA); if (!bm.GetBits()) return false; //wooden
 	glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &idTexWood);
@@ -141,15 +147,15 @@ bool init()
 		GL_UNSIGNED_BYTE, bm.GetBits());
 	//glActiveTexture(GL_TEXTURE0); // for multitexturing, not required here
 	
-
+	// Solid
 	glGenTextures(1, &idTexNone); //blank for solid colour objects
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	BYTE bytes[] = { 255, 255, 255 };
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_BGR, GL_UNSIGNED_BYTE, &bytes);
 	
-	
-	bm.Load("models/fabric.png", GL_RGBA); if (!bm.GetBits()) return false; //fabric
+	// Fabric
+	bm.Load("models/fabric.png", GL_RGBA); if (!bm.GetBits()) return false; 
 	glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &idTexFabric);
 	glBindTexture(GL_TEXTURE_2D, idTexFabric);
@@ -157,7 +163,7 @@ bool init()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
 		GL_UNSIGNED_BYTE, bm.GetBits());
 	
-	
+	// Gold
 	bm.Load("models/goldy.png", GL_RGBA); if (!bm.GetBits()) return false; //golden
 	glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &idTexMetallicBrushed);
@@ -192,34 +198,7 @@ bool init()
 	return true;
 }
 
-void ComputePositionOffsets(float& fXOffset, float& fYOffset)
-{
-	const float fLoopDuration = 5.0f;
-	const float fScale = 3.14159f * 2.0f / fLoopDuration;
 
-	float fElapsedTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
-
-	float fCurrTimeThroughLoop = fmodf(fElapsedTime, fLoopDuration);
-
-	fXOffset = cosf(fCurrTimeThroughLoop * fScale) * 0.5f;
-	fYOffset = sinf(fCurrTimeThroughLoop * fScale) * 0.5f;
-}
-
-void AdjustVertexData(float fXOffset, float fYOffset)
-{
-	std::vector<float> fNewData(ARRAY_COUNT(vertices));
-	memcpy(&fNewData[0], vertices, sizeof(vertices));
-
-	for (int iVertex = 0; iVertex < ARRAY_COUNT(vertices); iVertex += 4)
-	{
-		fNewData[iVertex] += fXOffset;
-		fNewData[iVertex + 1] += fYOffset;
-	}
-
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &fNewData[0]);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
 void done()
 {
 }
@@ -275,7 +254,7 @@ void render() // updates the display
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 
-	// spheres (light bulbs, visual for light point positions, emmisive lighting)
+	// SPHERES (light bulbs, visual for light point positions, emmisive lighting)
 	
 	Program.SendUniform("lightAmbient2.on", 1); // for emissive light bulb effect
 	m = matrixView;
@@ -296,22 +275,31 @@ void render() // updates the display
 	
 	Program.SendUniform("materialDiffuse", 1.0, 0.0, 0.0); // red lamp models
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
-	//lamp 1
+	// Lamp 1
 	m = matrixView;
 	m = translate(m, vec3(1.0f, 9.7f, -4.0f));
 	m = rotate(m, radians(0.0f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.07f, 0.07f, 0.07f));
 	lamp.render(m);
 
-	//lamp 2
+	// Lamp 2
 	m = matrixView;
 	m = translate(m, vec3(16.0f, 9.7f, 4.0f));
 	m = rotate(m, radians(0.0f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.07f, 0.07f, 0.07f));
 	lamp.render(m);
 
-	// vase
-	Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue vase
+	// Ceiling lamp (SPOT LIGHT)
+	Program.SendUniform("materialDiffuse", 0.0, 0.0, 1.0); // blue
+	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
+	m = matrixView;
+	m = translate(m, vec3(25.0f, 40.0f, -24.0f));
+	m = rotate(m, radians(0.0f), vec3(0.0f, 1.0f, 0.0f));
+	m = scale(m, vec3(0.2f, 0.2f, 0.2f));
+	ceilinglamp.render(m);
+
+	// Vase
+	Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue
 	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
 	m = matrixView;
 	m = translate(m, vec3(9.0f, 9.7f, 0.0f));
@@ -319,16 +307,9 @@ void render() // updates the display
 	m = scale(m, vec3(0.4f, 0.4f, 0.4f));
 	vase.render(m);
 	
-	//extra obj - horse
-	
-	
 	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
 	
-	
-
-	Program.SendUniform("shininess", 20.0); //shine reverted to 20
-	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection reverted
-	//table
+	// Table 1
 	glBindTexture(GL_TEXTURE_2D, idTexWood);
 	Program.SendUniform("materialSpecular", 0.0, 0.0, 0.0); //black makes the table and chairs non-shiny
 	m = matrixView;
@@ -337,7 +318,14 @@ void render() // updates the display
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
 	table.render(1,m);
 
-	//chairs
+	// Table 2
+	m = matrixView;
+	m = translate(m, vec3(25.0f, -1.0f, -24.0f));
+	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
+	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
+	table.render(1, m);
+	
+	// Chairs
 	glBindTexture(GL_TEXTURE_2D, idTexFabric);
 
 	m = matrixView;
@@ -366,7 +354,7 @@ void render() // updates the display
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 	
-	//teapot
+	// Teapot
 	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0); // purple 
 	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
 	m = matrixView;
