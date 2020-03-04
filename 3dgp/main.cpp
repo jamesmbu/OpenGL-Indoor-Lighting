@@ -400,8 +400,8 @@ void renderReflective(mat4 matrixView, float theta)
 	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
 	// Vase
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
-	//Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue
-	//Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
+	Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue
+	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
 	m = matrixView;
 	m = translate(m, vec3(9.0f, 9.7f, 0.0f));
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
@@ -450,12 +450,13 @@ void prepareCubeMap(float x, float y, float z, float theta)
 		// render scene objects - all but the reflective one
 		glActiveTexture(GL_TEXTURE0);
 		renderObjects(matrixView2, theta);
-		renderReflective(matrixView2, theta);
+		
 
 		// send the image to the cube texture
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
 		glCopyTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB8, 0, 0, 256, 256, 0);
+		renderReflective(matrixView2, theta);
 	}
 
 	// restore the matrixView, viewport and projection
@@ -467,7 +468,7 @@ void render() // updates the display
 	
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
-	prepareCubeMap(9.0f, 9.7f, 0.0f, theta);
+	prepareCubeMap(9.0f, 12.7f, 0.0f, theta);
 	// clear screen and buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
