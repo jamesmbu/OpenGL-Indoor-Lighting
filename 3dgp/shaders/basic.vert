@@ -21,7 +21,7 @@ uniform vec2 offset;
 out vec4 color;
 out vec4 position; // output variables sent off to the fragment shader
 out vec3 normal;
-
+out vec3 texCoordCubeMap; // cube map 3D texture
 
 out vec2 texCoord0; // bitmap
 
@@ -30,7 +30,7 @@ struct AMBIENT
 	int on;
 	vec3 color;
 };
-uniform AMBIENT lightAmbient, lightAmbient2, lightAmbient3;
+uniform AMBIENT lightAmbient, lightAmbient2, lightAmbient3, lightAmbient4;
 
 vec4 AmbientLight(AMBIENT light)
 {
@@ -75,13 +75,17 @@ void main(void)
 	// calculate light
 	color = vec4(0, 0, 0, 1);
 	
+	// calculate reflection vector (cube map)
+	texCoordCubeMap = inverse(mat3(matrixView)) * reflect(position.xyz, normal);
+
 	if (lightAmbient.on == 1) 
 		color += AmbientLight(lightAmbient);
 	if (lightAmbient2.on == 1)
 		color += AmbientLight(lightAmbient2);
 	if (lightAmbient3.on == 1)
 		color += AmbientLight(lightAmbient3);
-
+	if (lightAmbient4.on == 1)
+		color += AmbientLight(lightAmbient4);
 	if (lightDir.on == 1) 
 		color += DirectionalLight(lightDir);
 	

@@ -23,6 +23,11 @@ out vec4 outColor;
 
 in vec2 texCoord0; // bitmap
 
+//cube map stuff
+in vec3 texCoordCubeMap;
+uniform samplerCube textureCubeMap;
+uniform float reflectionPower;
+
 
 
 struct POINT
@@ -111,5 +116,8 @@ void main(void)
 
 	if (spotLight1.on == 1)
 		outColor += SpotLight(spotLight1);
-	outColor *= texture(texture0, texCoord0);
+	//outColor *= texture(texture0, texCoord0);
+
+	outColor = mix(outColor * texture(texture0, texCoord0.st), texture(textureCubeMap, texCoordCubeMap), reflectionPower);
+
 }

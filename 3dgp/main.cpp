@@ -64,6 +64,8 @@ vec3 cam(0);				// Camera movement values
 int lamp1 = 0; // initially, point lights are OFF
 int lamp2 = 0;  // these are used in PointLightSwitching function for toggling lamp lighting
 
+GLuint idTexCube; //for environment cube map texture
+
 void InitialiseVertexBuffer() // Full explanation: https://paroj.github.io/gltut/Basics/Tut01%20Following%20the%20Data.html
 {
 	glGenBuffers(1, &vertexBuffer); // creation of buffer object, but has no memory uyet
@@ -145,7 +147,7 @@ bool init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
 		GL_UNSIGNED_BYTE, bm.GetBits());
-	//glActiveTexture(GL_TEXTURE0); // for multitexturing, not required here
+	//glActiveTexture(GL_TEXTURE0); // for multitexturing
 	
 	// Solid
 	glGenTextures(1, &idTexNone); //blank for solid colour objects
@@ -195,6 +197,17 @@ bool init()
 	cout << "  Press 1 or 2 to toggle lighting of lamps" << endl;
 	cout << endl;
 
+	// load Cube Map
+	glActiveTexture(GL_TEXTURE1);
+	glGenTextures(1, &idTexCube);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	Program.SendUniform("textureCubeMap", 1);
+	glActiveTexture(GL_TEXTURE0);
 	return true;
 }
 
@@ -202,78 +215,57 @@ bool init()
 void done()
 {
 }
-
-void render() // updates the display
+// called before window opened or resized - to setup the Projection Matrix
+void reshape(int w, int h)
 {
+	float ratio = w * 1.0f / h;      // we hope that h is not zero
+	glViewport(0, 0, w, h);
+	mat4 matrixProjection = perspective(radians(60.f), ratio, 0.02f, 1000.f);
 
-	// this global variable controls the animation
-	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
+	// Setup the Projection Matrix
 
-	// clear screen and buffers
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//W2, step 4.1 (replace deprecated code)
+	Program.SendUniform("matrixProjection", matrixProjection);
 
-	// setup the View Matrix (camera)
-	mat4 m = rotate(mat4(1.f), radians(angleTilt), vec3(1.f, 0.f, 0.f));// switch tilt off
-	m = translate(m, cam);												// animate camera motion (controlled by WASD keys)
-	m = rotate(m, radians(-angleTilt), vec3(1.f, 0.f, 0.f));			// switch tilt on
-	m = m * matrixView;
-	m = rotate(m, radians(angleRot), vec3(0.f, 1.f, 0.f));				// animate camera orbiting
-	matrixView = m;
-	Program.SendUniform("matrixView", matrixView);
-
-	// LIGHTING and initial light settings
-	Program.SendUniform("lightAmbient.on", 1);
-	Program.SendUniform("lightAmbient.color", 0.1, 0.1, 0.1);
-	Program.SendUniform("materialAmbient", 1.0, 1.0, 1.0);
-
-	Program.SendUniform("lightDir.on", 1);
-	Program.SendUniform("lightDir.direction", 1.0, 0.5, 1.0);
-	Program.SendUniform("lightDir.diffuse", 0.2, 0.2, 0.2);	  // dimmed white light
-	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0); // color of the light
+}
+void renderObjects(mat4 matrixView, float theta)
+{
+	mat4 m;
 	
-	Program.SendUniform("lightPoint1.position", -1.55, 13.9, -4.0);
-	Program.SendUniform("lightPoint1.diffuse", 0.5, 0.5, 0.5); //brightness
-	
-	Program.SendUniform("lightPoint1.specular", 1.0,1.0,1.0); //brightestness .0 to 1.0
-	
-	Program.SendUniform("lightPoint2.position", 13.45, 13.9, 4.0);
-	Program.SendUniform("lightPoint2.diffuse", 0.5, 0.5, 0.5); //brightness
-	
-	Program.SendUniform("lightPoint2.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
-	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection
-	Program.SendUniform("shininess", 20.0); //shine
-	
-	Program.SendUniform("spotLight1.on", 1);
-	Program.SendUniform("spotLight1.position", 13.45, 13.9, 4.0);
-	Program.SendUniform("spotLight1.diffuse", 0.5, 0.5, 0.5); //brightness
-	Program.SendUniform("spotLight1.specular", 1.0, 1.0, 1.0);
-
-	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
-	Program.SendUniform("spotLight1.cutoff", 50.0f);
-	Program.SendUniform("spotLight1.attenuation", 7.0f);
+	glActiveTexture(GL_TEXTURE0);
+	Program.SendUniform("reflectionPower", 0.0);
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
 
 	// SPHERES (light bulbs, visual for light point positions, emmisive lighting)
-	
+
 	Program.SendUniform("lightAmbient2.on", 1); // for emissive light bulb effect
 	m = matrixView;
 	m = translate(m, vec3(-1.55f, 13.9f, -4.0f));
 	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
 	Program.SendUniform("matrixModelView", m);
 	glutSolidSphere(1, 32, 32);
-	
 	Program.SendUniform("lightAmbient2.on", 0);
+
 	Program.SendUniform("lightAmbient3.on", 1);
 	m = matrixView;
 	m = translate(m, vec3(13.45f, 13.9f, 4.0f));
 	m = scale(m, vec3(0.3f, 0.3f, 0.3f));
 	Program.SendUniform("matrixModelView", m);
 	glutSolidSphere(1, 32, 32);
-
 	Program.SendUniform("lightAmbient3.on", 0);
-	
-	Program.SendUniform("materialDiffuse", 1.0, 0.0, 0.0); // red lamp models
+
+	Program.SendUniform("lightAmbient4.on", 1);
+	Program.SendUniform("lightAmbient4.color", 0.6, 0.6, 0.6);
+	m = matrixView;
+	m = translate(m, vec3(25.0f, 16.0f, -24.0f));
+	m = scale(m, vec3(0.8f, 0.8f, 0.8f));
+	Program.SendUniform("matrixModelView", m);
+	glutSolidSphere(1, 32, 32);
+	Program.SendUniform("lightAmbient4.on", 0);
+
+
+	Program.SendUniform("materialDiffuse", 1.0, 0.0, 0.0); // red
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
 	// Lamp 1
 	m = matrixView;
@@ -290,25 +282,16 @@ void render() // updates the display
 	lamp.render(m);
 
 	// Ceiling lamp (SPOT LIGHT)
-	Program.SendUniform("materialDiffuse", 0.0, 0.0, 1.0); // blue
+	Program.SendUniform("materialDiffuse", 0.2, 0.2, 0.2); // grey
 	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
 	m = matrixView;
-	m = translate(m, vec3(25.0f, 40.0f, -24.0f));
+	m = translate(m, vec3(25.0f, 36.0f, -24.0f));
 	m = rotate(m, radians(0.0f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.2f, 0.2f, 0.2f));
 	ceilinglamp.render(m);
 
-	// Vase
-	Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue
-	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
-	m = matrixView;
-	m = translate(m, vec3(9.0f, 9.7f, 0.0f));
-	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
-	m = scale(m, vec3(0.4f, 0.4f, 0.4f));
-	vase.render(m);
-	
+	// Vase (reflective object) usually goes here, but is moved to the initial render function
 	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
-	
 	// Table 1
 	glBindTexture(GL_TEXTURE_2D, idTexWood);
 	Program.SendUniform("materialSpecular", 0.0, 0.0, 0.0); //black makes the table and chairs non-shiny
@@ -316,7 +299,7 @@ void render() // updates the display
 	m = translate(m, vec3(9.0f, -1, 0.0f));
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
-	table.render(1,m);
+	table.render(1, m);
 
 	// Table 2
 	m = matrixView;
@@ -324,7 +307,7 @@ void render() // updates the display
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
 	table.render(1, m);
-	
+
 	// Chairs
 	glBindTexture(GL_TEXTURE_2D, idTexFabric);
 
@@ -338,14 +321,14 @@ void render() // updates the display
 	m = translate(m, vec3(12.0f, -1, 0.0f));
 	m = rotate(m, radians(90.f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
-	table.render(0,m);
+	table.render(0, m);
 
 	m = matrixView;
 	m = translate(m, vec3(4.0f, -1, 0.0f));
 	m = rotate(m, radians(-90.f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
 	table.render(0, m);
-	
+
 	m = matrixView;
 	m = translate(m, vec3(8.0f, -1, 0.0f));
 	m = rotate(m, radians(0.f), vec3(0.0f, 1.0f, 0.0f));
@@ -353,7 +336,7 @@ void render() // updates the display
 	table.render(0, m);
 
 	glBindTexture(GL_TEXTURE_2D, idTexNone); //blank texture
-	
+
 	// Teapot
 	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0); // purple 
 	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
@@ -407,7 +390,128 @@ void render() // updates the display
 	m = rotate(m, radians(180.0f), vec3(1.0f, 0.0f, 0.0f));
 	m = scale(m, vec3(0.02f, 0.02f, 0.02f));
 	horse.render(m);
+}
+void renderReflective(mat4 matrixView, float theta)
+{
+	mat4 m;
 
+	glActiveTexture(GL_TEXTURE1);
+	Program.SendUniform("reflectionPower", 1.0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
+	// Vase
+	glBindTexture(GL_TEXTURE_2D, idTexNone);
+	//Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue
+	//Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
+	m = matrixView;
+	m = translate(m, vec3(9.0f, 9.7f, 0.0f));
+	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
+	m = scale(m, vec3(0.4f, 0.4f, 0.4f));
+	vase.render(m);
+
+	
+}
+void prepareCubeMap(float x, float y, float z, float theta)
+{
+	// Store the current viewport in a safe place
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	int w = viewport[2];
+	int h = viewport[3];
+
+	// setup the viewport to 256x256, 90 degrees FoV (Field of View)
+	glViewport(0, 0, 256, 256);
+	Program.SendUniform("matrixProjection", perspective(radians(90.f), 1.0f, 0.02f, 1000.0f));
+
+	// render environment 6 times
+	Program.SendUniform("reflectionPower", 0.0);
+	for (int i = 0; i < 6; ++i)
+	{
+		// clear background
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// setup the camera
+		const GLfloat ROTATION[6][6] =
+		{	// at              up
+			{ 1.0, 0.0, 0.0,   0.0, -1.0, 0.0 },  // pos x
+			{ -1.0, 0.0, 0.0,  0.0, -1.0, 0.0 },  // neg x
+			{ 0.0, 1.0, 0.0,   0.0, 0.0, 1.0 },   // pos y
+			{ 0.0, -1.0, 0.0,  0.0, 0.0, -1.0 },  // neg y
+			{ 0.0, 0.0, 1.0,   0.0, -1.0, 0.0 },  // poz z
+			{ 0.0, 0.0, -1.0,  0.0, -1.0, 0.0 }   // neg z
+		};
+		mat4 matrixView2 = lookAt(
+			vec3(x, y, z),
+			vec3(x + ROTATION[i][0], y + ROTATION[i][1], z + ROTATION[i][2]),
+			vec3(ROTATION[i][3], ROTATION[i][4], ROTATION[i][5]));
+
+		// send the View Matrix
+		Program.SendUniform("matrixView", matrixView);
+
+		// render scene objects - all but the reflective one
+		glActiveTexture(GL_TEXTURE0);
+		renderObjects(matrixView2, theta);
+		renderReflective(matrixView2, theta);
+
+		// send the image to the cube texture
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
+		glCopyTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB8, 0, 0, 256, 256, 0);
+	}
+
+	// restore the matrixView, viewport and projection
+	void reshape(int w, int h);
+	reshape(w, h);
+}
+void render() // updates the display
+{
+	
+	// this global variable controls the animation
+	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
+	prepareCubeMap(9.0f, 9.7f, 0.0f, theta);
+	// clear screen and buffers
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// setup the View Matrix (camera)
+	mat4 m = rotate(mat4(1.f), radians(angleTilt), vec3(1.f, 0.f, 0.f));// switch tilt off
+	m = translate(m, cam);												// animate camera motion (controlled by WASD keys)
+	m = rotate(m, radians(-angleTilt), vec3(1.f, 0.f, 0.f));			// switch tilt on
+	m = m * matrixView;
+	m = rotate(m, radians(angleRot), vec3(0.f, 1.f, 0.f));				// animate camera orbiting
+	matrixView = m;
+	Program.SendUniform("matrixView", matrixView);
+
+	// LIGHTING and initial light settings
+	Program.SendUniform("lightAmbient.on", 1);
+	Program.SendUniform("lightAmbient.color", 0.1, 0.1, 0.1);
+	Program.SendUniform("materialAmbient", 1.0, 1.0, 1.0);
+
+	Program.SendUniform("lightDir.on", 1);
+	Program.SendUniform("lightDir.direction", 1.0, 0.5, 1.0);
+	Program.SendUniform("lightDir.diffuse", 0.2, 0.2, 0.2);	  // dimmed white light
+	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0); // color of the light
+
+	Program.SendUniform("lightPoint1.position", -1.55, 13.9, -4.0);
+	Program.SendUniform("lightPoint1.diffuse", 0.5, 0.5, 0.5); //brightness
+	Program.SendUniform("lightPoint1.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
+
+	Program.SendUniform("lightPoint2.position", 13.45, 13.9, 4.0);
+	Program.SendUniform("lightPoint2.diffuse", 0.5, 0.5, 0.5); //brightness
+	Program.SendUniform("lightPoint2.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
+
+	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection
+	Program.SendUniform("shininess", 20.0); //shine
+
+	Program.SendUniform("spotLight1.on", 1);
+	Program.SendUniform("spotLight1.position", 25.0, 16.0, -24.0);
+	Program.SendUniform("spotLight1.diffuse", 0.5, 0.5, 0.5); //brightness
+	Program.SendUniform("spotLight1.specular", 1.0, 1.0, 1.0);
+
+	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
+	Program.SendUniform("spotLight1.cutoff", 50.0f);
+	Program.SendUniform("spotLight1.attenuation", 7.0f);
+
+	renderObjects(matrixView, theta);
+	renderReflective(matrixView, theta);
 	// essential for double-buffering technique
 	glutSwapBuffers();
 
@@ -415,19 +519,11 @@ void render() // updates the display
 	glutPostRedisplay();
 }
 
-// called before window opened or resized - to setup the Projection Matrix
-void reshape(int w, int h)
-{
-	float ratio = w * 1.0f / h;      // we hope that h is not zero
-	glViewport(0, 0, w, h);
-	mat4 matrixProjection = perspective(radians(60.f), ratio, 0.02f, 1000.f);
 
-	// Setup the Projection Matrix
-	
-	//W2, step 4.1 (replace deprecated code)
-	Program.SendUniform("matrixProjection", matrixProjection); 
 
-}
+
+
+
 
 void PointLightSwitching(int PLightID)
 {
@@ -471,12 +567,12 @@ void onKeyDown(unsigned char key, int x, int y)
 {
 	switch (tolower(key))
 	{
-	case 'w': cam.z = std::max(cam.z * 1.05f, 0.01f); break;
-	case 's': cam.z = std::min(cam.z * 1.05f, -0.01f); break;
-	case 'a': cam.x = std::max(cam.x * 1.05f, 0.01f); angleRot = 0.1f; break;
-	case 'd': cam.x = std::min(cam.x * 1.05f, -0.01f); angleRot = -0.1f; break;
-	case 'e': cam.y = std::max(cam.y * 1.05f, 0.01f); break;
-	case 'q': cam.y = std::min(cam.y * 1.05f, -0.01f); break;
+	case 'w': cam.z = std::max(cam.z * 1.6f, 0.14f); break; 
+	case 's': cam.z = std::min(cam.z * 1.6f, -0.14f); break;
+	case 'a': cam.x = std::max(cam.x * 1.6f, 0.14f); angleRot = 0.1f; break;
+	case 'd': cam.x = std::min(cam.x * 1.6f, -0.14f); angleRot = -0.1f; break;
+	case 'e': cam.y = std::max(cam.y * 1.6f, 0.14f); break;
+	case 'q': cam.y = std::min(cam.y * 1.6f, -0.14f); break;
 	case '1':
 
 		PointLightSwitching(1);
