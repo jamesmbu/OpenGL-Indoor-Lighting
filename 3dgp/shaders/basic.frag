@@ -121,6 +121,6 @@ void main(void)
 		outColor += SpotLight(spotLight1);
 	//outColor *= texture(texture0, texCoord0);
 
-	outColor = mix(outColor * texture(texture0, texCoord0.st), outColor * texture(textureCubeMap, texCoordCubeMap), reflectionPower);
+	outColor = mix(outColor * texture(texture0, texCoord0.st), texture(textureCubeMap, texCoordCubeMap), reflectionPower);
 
 }

@@ -520,7 +520,7 @@ void render() // updates the display
 	
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
-	prepareCubeMap(9.0f,11.7f, 0.0f, theta);
+	prepareCubeMap(9.0f,12.7f, 0.0f, theta);
 	// clear screen and buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

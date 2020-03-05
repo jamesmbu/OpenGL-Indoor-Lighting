@@ -89,7 +89,7 @@ void main(void)
 		color += DirectionalLight(lightDir);
 	
 	// calculate reflection vector (cube map)
-	texCoordCubeMap = inverse(mat3(matrixView)) * mix(reflect(position.xyz, normal.xyz), normal.xyz, .2);
+	texCoordCubeMap = inverse(mat3(matrixView)) * mix(reflect(position.xyz, normal.xyz), normal.xyz, 0.95);
 
 }
 
