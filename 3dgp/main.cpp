@@ -273,7 +273,7 @@ void renderObjects(mat4 matrixView, float theta)
 	m = matrixView;
 	m = translate(m, vec3(25, 36, -24));
 	m = rotate(m, radians(alpha), vec3(0, 0 ,0.05));
-	cout << alpha << endl;
+	//cout << alpha << endl;
 	m = translate(m, vec3(-25, -36, 24));
 	mat4 m1 = m; 
 	m = translate(m, vec3(25, 36, -24));
@@ -283,9 +283,10 @@ void renderObjects(mat4 matrixView, float theta)
 	Program.SendUniform("lightAmbient4.on", 1);
 	Program.SendUniform("lightAmbient4.color", 0.6, 0.6, 0.6);
 	m = m1;
-	m = translate(m, vec3(25,9,-24)); //(25.0f, 16.0f, -24.0f)
+	m = translate(m, vec3(25,16,-24));
 	m = scale(m, vec3(0.8f, 0.8f, 0.8f));
 	Program.SendUniform("matrixModelView", m);
+	Program.SendUniform("spotLight1.matrix",m);
 	glutSolidSphere(1, 32, 32);
 	Program.SendUniform("lightAmbient4.on", 0);
 
@@ -393,13 +394,15 @@ void renderObjects(mat4 matrixView, float theta)
 void renderReflective(mat4 matrixView, float theta)
 {
 	mat4 m;
+	glBindTexture(GL_TEXTURE_2D, idTexNone);
 	glActiveTexture(GL_TEXTURE1);
-	Program.SendUniform("reflectionPower", 1.0);
+	Program.SendUniform("reflectionPower", .45);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
 	// Vase
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
-	Program.SendUniform("materialDiffuse", 0.4, 0.9, 1.0); // blue
-	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
+	Program.SendUniform("materialDiffuse", 0.7, 0.8, 1.0); // blue
+	Program.SendUniform("materialSpecular", 0.9, 0.97, 1.0); //colouring of reflection
+	Program.SendUniform("shininess",  50.0); //more shiny
 	m = matrixView;
 	m = translate(m, vec3(9.0f, 9.7f, 0.0f));
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
@@ -517,7 +520,7 @@ void render() // updates the display
 	
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
-	prepareCubeMap(9.0f, 11.7f, 0.0f, theta);
+	prepareCubeMap(9.0f,11.7f, 0.0f, theta);
 	// clear screen and buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -540,7 +543,6 @@ void render() // updates the display
 	Program.SendUniform("lightDir.diffuse", 0.2, 0.2, 0.2);	  // dimmed white light
 	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0); // color of the light
 
-	
 	Program.SendUniform("lightPoint1.position", -1.55, 13.9, -4.0);
 	Program.SendUniform("lightPoint1.diffuse", 0.5, 0.5, 0.5); //brightness
 	Program.SendUniform("lightPoint1.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
@@ -553,8 +555,8 @@ void render() // updates the display
 	Program.SendUniform("shininess", 20.0); //shine
 
 	Program.SendUniform("spotLight1.on", 1);
-	Program.SendUniform("spotLight1.position", 25.0, 16.0, -24.0);
-	Program.SendUniform("spotLight1.diffuse", 0.5, 0.5, 0.5); //brightness
+	Program.SendUniform("spotLight1.position", 0.0, 0.0, 0.0);
+	Program.SendUniform("spotLight1.diffuse", 0.8, 0.8, 0.8); //brightness
 	Program.SendUniform("spotLight1.specular", 1.0, 1.0, 1.0);
 
 	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
