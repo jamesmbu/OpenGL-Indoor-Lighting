@@ -176,7 +176,18 @@ bool init()
 
 	// Send the texture info to the shaders
 	Program.SendUniform("texture0", 0);
-
+	
+	// load Cube Map
+	glActiveTexture(GL_TEXTURE1);
+	glGenTextures(1, &idTexCube);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	Program.SendUniform("textureCubeMap", 1);
+	glActiveTexture(GL_TEXTURE0);
 
 	// Initialise the View Matrix (initial position of the camera)
 	matrixView = rotate(mat4(1.f), radians(angleTilt), vec3(1.f, 0.f, 0.f));
@@ -197,17 +208,7 @@ bool init()
 	cout << "  Press 1 or 2 to toggle lighting of lamps" << endl;
 	cout << endl;
 
-	// load Cube Map
-	glActiveTexture(GL_TEXTURE1);
-	glGenTextures(1, &idTexCube);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	Program.SendUniform("textureCubeMap", 1);
-	glActiveTexture(GL_TEXTURE0);
+	
 	return true;
 }
 
@@ -215,19 +216,7 @@ bool init()
 void done()
 {
 }
-// called before window opened or resized - to setup the Projection Matrix
-void reshape(int w, int h)
-{
-	float ratio = w * 1.0f / h;      // we hope that h is not zero
-	glViewport(0, 0, w, h);
-	mat4 matrixProjection = perspective(radians(60.f), ratio, 0.02f, 1000.f);
 
-	// Setup the Projection Matrix
-
-	//W2, step 4.1 (replace deprecated code)
-	Program.SendUniform("matrixProjection", matrixProjection);
-
-}
 void renderObjects(mat4 matrixView, float theta)
 {
 	mat4 m;
@@ -291,7 +280,7 @@ void renderObjects(mat4 matrixView, float theta)
 	ceilinglamp.render(m);
 
 	// Vase (reflective object) usually goes here, but is moved to the initial render function
-	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
+	Program.SendUniform("materialDiffuse", .6, .3, .3); // red-ish dark brown
 	// Table 1
 	glBindTexture(GL_TEXTURE_2D, idTexWood);
 	Program.SendUniform("materialSpecular", 0.0, 0.0, 0.0); //black makes the table and chairs non-shiny
@@ -310,7 +299,7 @@ void renderObjects(mat4 matrixView, float theta)
 
 	// Chairs
 	glBindTexture(GL_TEXTURE_2D, idTexFabric);
-
+	Program.SendUniform("materialDiffuse", .8, .8, 1.0); // pale blue
 	m = matrixView;
 	m = translate(m, vec3(8.0f, -1, -0.0f));
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
@@ -394,7 +383,6 @@ void renderObjects(mat4 matrixView, float theta)
 void renderReflective(mat4 matrixView, float theta)
 {
 	mat4 m;
-
 	glActiveTexture(GL_TEXTURE1);
 	Program.SendUniform("reflectionPower", 1.0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
@@ -407,8 +395,20 @@ void renderReflective(mat4 matrixView, float theta)
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.4f, 0.4f, 0.4f));
 	vase.render(m);
-
 	
+}
+// called before window opened or resized - to setup the Projection Matrix
+void reshape(int w, int h)
+{
+	float ratio = w * 1.0f / h;      // we hope that h is not zero
+	glViewport(0, 0, w, h);
+	mat4 matrixProjection = perspective(radians(60.f), ratio, 0.02f, 1000.f);
+
+	// Setup the Projection Matrix
+
+	//W2, step 4.1 (replace deprecated code)
+	Program.SendUniform("matrixProjection", matrixProjection);
+
 }
 void prepareCubeMap(float x, float y, float z, float theta)
 {
@@ -456,19 +456,58 @@ void prepareCubeMap(float x, float y, float z, float theta)
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
 		glCopyTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB8, 0, 0, 256, 256, 0);
-		renderReflective(matrixView2, theta);
+		
 	}
 
 	// restore the matrixView, viewport and projection
 	void reshape(int w, int h);
 	reshape(w, h);
 }
+
+void PointLightSwitching(int PLightID)
+{
+	if (PLightID == 1)
+	{
+		if (lamp1 == 0)
+		{
+			Program.SendUniform("lightAmbient2.color", 0.8, 0.8, 0.8);
+			Program.SendUniform("lightPoint1.on", 1);
+			lamp1 += 1; return;
+		}
+		else if (lamp1 == 1)
+		{
+			Program.SendUniform("lightAmbient2.color", 0.0, 0.0, 0.0);
+			Program.SendUniform("lightPoint1.on", 0);
+			lamp1 -= 1;
+			return;
+		}
+	}
+	else if (PLightID == 2)
+	{
+		if (lamp2 == 0)
+		{
+			Program.SendUniform("lightAmbient3.color", 0.8, 0.8, 0.8);
+			Program.SendUniform("lightPoint2.on", 1);
+			lamp2 += 1; std::cout << lamp2 << endl;
+			return;
+		}
+		else if (lamp2 == 1)
+		{
+			Program.SendUniform("lightAmbient3.color", 0.0, 0.0, 0.0);
+			Program.SendUniform("lightPoint2.on", 0);
+			lamp2 -= 1;
+			std::cout << lamp2 << endl;
+			return;
+		}
+	}
+}
+
 void render() // updates the display
 {
 	
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
-	prepareCubeMap(9.0f, 12.7f, 0.0f, theta);
+	prepareCubeMap(9.0f, 11.7f, 0.0f, theta);
 	// clear screen and buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -491,6 +530,7 @@ void render() // updates the display
 	Program.SendUniform("lightDir.diffuse", 0.2, 0.2, 0.2);	  // dimmed white light
 	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0); // color of the light
 
+	
 	Program.SendUniform("lightPoint1.position", -1.55, 13.9, -4.0);
 	Program.SendUniform("lightPoint1.diffuse", 0.5, 0.5, 0.5); //brightness
 	Program.SendUniform("lightPoint1.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
@@ -522,47 +562,6 @@ void render() // updates the display
 
 
 
-
-
-
-
-void PointLightSwitching(int PLightID)
-{
-	if (PLightID == 1)
-	{
-		if (lamp1 == 0) 
-		{
-			Program.SendUniform("lightAmbient2.color", 0.8, 0.8, 0.8);
-			Program.SendUniform("lightPoint1.on", 1); 
-			lamp1 += 1; return; 
-		}
-		else if (lamp1 == 1)
-		{
-			Program.SendUniform("lightAmbient2.color", 0.0, 0.0, 0.0);
-			Program.SendUniform("lightPoint1.on", 0);
-			lamp1 -= 1;
-			return;
-		}
-	}
-	else if (PLightID == 2)
-	{
-		if (lamp2 == 0) 
-		{
-			Program.SendUniform("lightAmbient3.color", 0.8, 0.8, 0.8);
-			Program.SendUniform("lightPoint2.on", 1);
-			lamp2 += 1; std::cout << lamp2 << endl;
-			return;
-		}
-		else if (lamp2 == 1)
-		{
-			Program.SendUniform("lightAmbient3.color", 0.0, 0.0, 0.0);
-			Program.SendUniform("lightPoint2.on", 0);
-			lamp2 -= 1;
-			std::cout << lamp2 << endl;
-			return;
-		}
-	}
-}	
 // Handle WASDQE keys
 void onKeyDown(unsigned char key, int x, int y)
 {

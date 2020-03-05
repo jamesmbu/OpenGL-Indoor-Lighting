@@ -37,13 +37,13 @@ struct POINT
 	vec3 diffuse;
 	vec3 specular;
 };
+
 uniform POINT lightPoint1, lightPoint2;
 
 vec4 PointLight(POINT light)
 {
 	// Calculate Point Light
 	vec4 color = vec4(0, 0, 0, 0);
-	//vec3 L = (normalize((matrixView) * vec4(light.position, 1) - position)).xyz;
 	vec3 L = normalize((matrixView * (vec4(light.position, 1))) - position).xyz;
 	
 	float NdotL = dot(normal, L);
@@ -53,7 +53,8 @@ vec4 PointLight(POINT light)
 	
 	vec3 V = normalize(-position.xyz);
 	vec3 R = reflect(-L, normal);
-	float RdotV = dot(R, V);	
+	float RdotV = dot(R, V);
+	
 	if (NdotL > 0 && RdotV > 0)
 	    color += vec4(materialSpecular * light.specular * pow(RdotV, shininess), 1);
 
@@ -118,6 +119,6 @@ void main(void)
 		outColor += SpotLight(spotLight1);
 	//outColor *= texture(texture0, texCoord0);
 
-	outColor = mix(outColor * texture(texture0, texCoord0.st), texture(textureCubeMap, texCoordCubeMap), reflectionPower);
+	outColor = mix(outColor * texture(texture0, texCoord0.st), outColor * texture(textureCubeMap, texCoordCubeMap), reflectionPower);
 
 }

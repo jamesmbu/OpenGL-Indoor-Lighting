@@ -75,8 +75,7 @@ void main(void)
 	// calculate light
 	color = vec4(0, 0, 0, 1);
 	
-	// calculate reflection vector (cube map)
-	texCoordCubeMap = inverse(mat3(matrixView)) * reflect(position.xyz, normal);
+	
 
 	if (lightAmbient.on == 1) 
 		color += AmbientLight(lightAmbient);
@@ -88,7 +87,8 @@ void main(void)
 		color += AmbientLight(lightAmbient4);
 	if (lightDir.on == 1) 
 		color += DirectionalLight(lightDir);
-	
+	// calculate reflection vector (cube map)
+	texCoordCubeMap = inverse(mat3(matrixView)) * mix(reflect(position.xyz, normal.xyz), normal.xyz, 0.8);
 
 
 }
