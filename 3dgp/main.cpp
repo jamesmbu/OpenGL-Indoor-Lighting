@@ -244,15 +244,6 @@ void renderObjects(mat4 matrixView, float theta)
 	glutSolidSphere(1, 32, 32);
 	Program.SendUniform("lightAmbient3.on", 0);
 
-	Program.SendUniform("lightAmbient4.on", 1);
-	Program.SendUniform("lightAmbient4.color", 0.6, 0.6, 0.6);
-	m = matrixView;
-	m = translate(m, vec3(25.0f, 16.0f, -24.0f));
-	m = scale(m, vec3(0.8f, 0.8f, 0.8f));
-	Program.SendUniform("matrixModelView", m);
-	glutSolidSphere(1, 32, 32);
-	Program.SendUniform("lightAmbient4.on", 0);
-
 
 	Program.SendUniform("materialDiffuse", 1.0, 0.0, 0.0); // red
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
@@ -270,14 +261,33 @@ void renderObjects(mat4 matrixView, float theta)
 	m = scale(m, vec3(0.07f, 0.07f, 0.07f));
 	lamp.render(m);
 
+	// Pendulum mechanics
+	static float alpha = 0;
+	static float delta = 0.01f;
+	delta -= alpha / 160000 ;
+	alpha += delta;
+
 	// Ceiling lamp (SPOT LIGHT)
 	Program.SendUniform("materialDiffuse", 0.2, 0.2, 0.2); // grey
 	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
 	m = matrixView;
-	m = translate(m, vec3(25.0f, 36.0f, -24.0f));
-	m = rotate(m, radians(0.0f), vec3(0.0f, 1.0f, 0.0f));
+	m = translate(m, vec3(25, 36, -24));
+	m = rotate(m, radians(alpha), vec3(0, 0 ,0.05));
+	cout << alpha << endl;
+	m = translate(m, vec3(-25, -36, 24));
+	mat4 m1 = m; 
+	m = translate(m, vec3(25, 36, -24));
 	m = scale(m, vec3(0.2f, 0.2f, 0.2f));
 	ceilinglamp.render(m);
+
+	Program.SendUniform("lightAmbient4.on", 1);
+	Program.SendUniform("lightAmbient4.color", 0.6, 0.6, 0.6);
+	m = m1;
+	m = translate(m, vec3(25,9,-24)); //(25.0f, 16.0f, -24.0f)
+	m = scale(m, vec3(0.8f, 0.8f, 0.8f));
+	Program.SendUniform("matrixModelView", m);
+	glutSolidSphere(1, 32, 32);
+	Program.SendUniform("lightAmbient4.on", 0);
 
 	// Vase (reflective object) usually goes here, but is moved to the initial render function
 	Program.SendUniform("materialDiffuse", .6, .3, .3); // red-ish dark brown

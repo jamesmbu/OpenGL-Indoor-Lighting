@@ -60,15 +60,15 @@ vec4 DirectionalLight(DIRECTIONAL light)
 
 void main(void) 
 {
-	// offset calculations
-	vec4 totalOffset = vec4(offset.x, offset.y, 0.0, 0.0);
+	
 	// calculate texture coordinate
 	texCoord0 = aTexCoord;
-
+	
 	// calculate position
 	position = matrixModelView * vec4(aVertex, 1.0);
 	gl_Position = matrixProjection * position;
-	
+	// calculate reflection vector (cube map)
+	//This makes the reflective object transparent!---> // texCoordCubeMap = inverse(mat3(matrixView)) * mix(reflect(position.xyz, normal.xyz), normal.xyz, 0.8);
 	// calculate normal
 	normal = normalize(mat3(matrixModelView) * aNormal);
 	
@@ -87,9 +87,9 @@ void main(void)
 		color += AmbientLight(lightAmbient4);
 	if (lightDir.on == 1) 
 		color += DirectionalLight(lightDir);
+	
 	// calculate reflection vector (cube map)
 	texCoordCubeMap = inverse(mat3(matrixView)) * mix(reflect(position.xyz, normal.xyz), normal.xyz, 0.8);
-
 
 }
 
