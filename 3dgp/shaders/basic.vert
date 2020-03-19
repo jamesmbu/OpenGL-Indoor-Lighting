@@ -25,6 +25,11 @@ out vec3 texCoordCubeMap; // cube map 3D texture
 
 out vec2 texCoord0; // bitmap
 
+// Shadow mapping
+uniform mat4 matrixShadow;
+out vec4 shadowCoord;
+
+
 struct AMBIENT
 {	
 	int on;
@@ -64,6 +69,7 @@ void main(void)
 	// calculate texture coordinate
 	texCoord0 = aTexCoord;
 	
+
 	// calculate position
 	position = matrixModelView * vec4(aVertex, 1.0);
 	gl_Position = matrixProjection * position;
@@ -91,6 +97,9 @@ void main(void)
 	// calculate reflection vector (cube map)
 	texCoordCubeMap = inverse(mat3(matrixView)) * mix(reflect(position.xyz, normal.xyz), normal.xyz, 0.95);
 
+	// calculate shadow coordinate – using the Shadow Matrix
+	mat4 matrixModel = inverse(matrixView) * matrixModelView;
+	shadowCoord = matrixShadow * matrixModel * vec4(aVertex, 1);
 }
 
 

@@ -18,6 +18,10 @@ using namespace std;
 using namespace _3dgl;
 using namespace glm;
 
+// Window dimentions
+int ScreenWidth = 800;
+int ScreenHeight = 600;
+
 // 3D models
 C3dglModel camera;
 C3dglModel vase;
@@ -65,6 +69,8 @@ int lamp1 = 0; // initially, point lights are OFF
 int lamp2 = 0;  // these are used in PointLightSwitching function for toggling lamp lighting
 
 GLuint idTexCube; //for environment cube map texture
+GLuint idTexShadowMap; // shadows
+GLuint idFBO;
 
 void InitialiseVertexBuffer() // Full explanation: https://paroj.github.io/gltut/Basics/Tut01%20Following%20the%20Data.html
 {
@@ -137,6 +143,43 @@ bool init()
 	// load your 3D models here!
 	
 	Load3DModels();
+	/////////////////////// SHADOW TEXTURE
+	// Create shadow map texture
+	glActiveTexture(GL_TEXTURE7);
+	glGenTextures(1, &idTexShadowMap);
+	glBindTexture(GL_TEXTURE_2D, idTexShadowMap);
+
+	// Texture parameters - to get nice filtering & avoid artefact on the edges of the shadowmap
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
+
+	// This will associate the texture with the depth component in the Z-buffer
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 800 * 2, 600 * 2, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+	// Send the texture info to the shaders
+	Program.SendUniform("shadowMap", 7);
+
+	// revert to texture unit 0
+	glActiveTexture(GL_TEXTURE0);
+	
+	// Create a framebuffer object (FBO)
+	glGenFramebuffers(1, &idFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER_EXT, idFBO);
+
+	// Instruct openGL that we won't bind a color texture with the currently binded FBO
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+
+	// attach the texture to FBO depth attachment point
+	glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D,
+		idTexShadowMap, 0);
+	// switch back to window-system-provided framebuffer
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
 
 	/////////////////////// BITMAP TEXTURES
 	// Oak
@@ -243,8 +286,7 @@ void renderObjects(mat4 matrixView, float theta)
 	Program.SendUniform("matrixModelView", m);
 	glutSolidSphere(1, 32, 32);
 	Program.SendUniform("lightAmbient3.on", 0);
-
-
+	
 	Program.SendUniform("materialDiffuse", 1.0, 0.0, 0.0); // red
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
 	// Lamp 1
@@ -346,6 +388,16 @@ void renderObjects(mat4 matrixView, float theta)
 	// the GLUT objects require the Model View Matrix setup
 	Program.SendUniform("matrixModelView", m);
 	glutSolidTeapot(1.5);
+	
+	// Teapot 2
+	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0); // purple 
+	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
+	m = matrixView;
+	m = translate(m, vec3(25.0f, 10.75f, -24.0f));
+	m = rotate(m, radians(30.0f), vec3(0.0f, 1.0f, 0.0f));
+	// the GLUT objects require the Model View Matrix setup
+	Program.SendUniform("matrixModelView", m);
+	glutSolidTeapot(1.5);
 
 	//pyramid
 	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0);
@@ -400,7 +452,7 @@ void renderReflective(mat4 matrixView, float theta)
 	glBindTexture(GL_TEXTURE_CUBE_MAP, idTexCube);
 	// Vase
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
-	Program.SendUniform("materialDiffuse", 0.7, 0.8, 1.0); // blue
+	Program.SendUniform("materialDiffuse", 0.2, 0.5, 1.0); // blue
 	Program.SendUniform("materialSpecular", 0.9, 0.97, 1.0); //colouring of reflection
 	Program.SendUniform("shininess",  50.0); //more shiny
 	m = matrixView;
@@ -477,6 +529,66 @@ void prepareCubeMap(float x, float y, float z, float theta)
 	reshape(w, h);
 }
 
+void createShadowMap(float theta, 					// animation control variable
+	float x, float y, float z,				// coords of the source of the light
+	float centerx, float centery, float centerz,	// cords of a point behind the scene
+	float upx, float upy, float upz)			// just a reasonable "Up" vector
+{
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
+
+	// Store the current viewport in a safe place
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	int w = viewport[2];
+	int h = viewport[3];
+
+	// setup the viewport to 2x2 the original and wide (120 degrees) FoV (Field of View)
+	glViewport(0, 0, w * 2, h * 2);
+	mat4 matrixProjection = perspective(radians(120.f), (float)w / (float)h, 0.5f, 5.0f);
+	Program.SendUniform("matrixProjection", matrixProjection);
+
+	// prepare the camera
+	mat4 matrixView = lookAt(
+		vec3(x, y, z),
+		vec3(centerx, centery, centerz),
+		vec3(upx, upy, upz));
+
+	// send the View Matrix
+	Program.SendUniform("matrixView", matrixView);
+
+	// Bind the Framebuffer
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, idFBO);
+	// OFF-SCREEN RENDERING FROM NOW!
+
+	// Clear previous frame values - depth buffer only!
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	// Disable color rendering, we only want to write to the Z-Buffer (this is to speed-up)
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+	// Prepare and send the Shadow Matrix - this is matrix transform every coordinate x,y,z
+	x = x * 0.5 + 0.5;
+	y = y * 0.5 + 0.5;
+	z = z * 0.5 + 0.5;
+	// Moving from unit cube [-1,1] to [0,1]  
+	const mat4 bias = {
+		{ 0.5, 0.0, 0.0, 0.0 },
+		{ 0.0, 0.5, 0.0, 0.0 },
+		{ 0.0, 0.0, 0.5, 0.0 },
+		{ 0.5, 0.5, 0.5, 1.0 }
+	};
+	Program.SendUniform("matrixShadow", bias * matrixProjection * matrixView);
+
+	// Render all objects in the scene (except the lamps)	
+	renderObjects(matrixView, theta);
+
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glDisable(GL_CULL_FACE);
+	reshape(w, h);
+}
+	
 void PointLightSwitching(int PLightID)
 {
 	if (PLightID == 1)
@@ -521,6 +633,7 @@ void render() // updates the display
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
 	prepareCubeMap(9.0f,12.7f, 0.0f, theta);
+	//createShadowMap(theta, 25.0f, 12.0f, -24.0f, 26.f, 3.0f, -24.0f, 0.0f, 1.0f, 0.f);
 	// clear screen and buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -687,7 +800,7 @@ int main(int argc, char **argv)
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(800, 600);
+	glutInitWindowSize(ScreenWidth, ScreenHeight);
 	glutCreateWindow("CI5520 3D Graphics Programming");
 
 	// init glew

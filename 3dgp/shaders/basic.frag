@@ -28,6 +28,9 @@ in vec3 texCoordCubeMap;
 uniform samplerCube textureCubeMap;
 uniform float reflectionPower;
 
+// Shadow mapping
+in vec4 shadowCoord;
+uniform sampler2DShadow shadowMap;
 
 
 struct POINT
@@ -121,6 +124,11 @@ void main(void)
 		outColor += SpotLight(spotLight1);
 	//outColor *= texture(texture0, texCoord0);
 
-	outColor = mix(outColor * texture(texture0, texCoord0.st), texture(textureCubeMap, texCoordCubeMap), reflectionPower);
+	// Calculation of the shadow
+	float shadow = 1.0;
+	if (shadowCoord.w > 0)	// if shadowCoord.w < 0 fragment is out of the Light POV
+		shadow = 0.5 + 0.5 * textureProj(shadowMap, shadowCoord);
 
+	outColor = mix(outColor * texture(texture0, texCoord0.st), texture(textureCubeMap, texCoordCubeMap), reflectionPower);
+	outColor *= shadow;
 }
