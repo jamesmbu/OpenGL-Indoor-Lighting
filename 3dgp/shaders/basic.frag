@@ -3,7 +3,7 @@
 #version 330
 // Matrices
 uniform mat4 matrixView;
-
+uniform	float att_quadratic;
 // Materials
 uniform vec3 materialAmbient;
 uniform vec3 materialDiffuse;
@@ -41,12 +41,15 @@ struct POINT
 	vec3 position;
 	vec3 diffuse;
 	vec3 specular;
+
+	float att_quadratic;
 };
 
 uniform POINT lightPoint1, lightPoint2;
 
 vec4 PointLight(POINT light)
 {
+	
 	// Calculate Point Light
 	vec4 color = vec4(0, 0, 0, 0);
 	vec3 L = normalize((matrixView * (vec4(light.position, 1))) - position).xyz;
@@ -62,8 +65,12 @@ vec4 PointLight(POINT light)
 	
 	if (NdotL > 0 && RdotV > 0)
 	    color += vec4(materialSpecular * light.specular * pow(RdotV, shininess), 1);
+	
+	// attenuation 
+	float dist = length(matrixView * vec4(light.position, 1) - position);
+	float att = 200*(1 / (light.att_quadratic * dist * dist));
 
-	return color;
+	return color * att;
 }
 
 struct SPOT

@@ -714,10 +714,12 @@ void render() // updates the display
 	Program.SendUniform("lightPoint1.position", -1.55, 13.9, -4.0);
 	Program.SendUniform("lightPoint1.diffuse", 0.5, 0.5, 0.5); //brightness
 	Program.SendUniform("lightPoint1.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
+	Program.SendUniform("lightPoint1.att_quadratic",5.0f);
 
 	Program.SendUniform("lightPoint2.position", 13.45, 13.9, 4.0);
 	Program.SendUniform("lightPoint2.diffuse", 0.5, 0.5, 0.5); //brightness
 	Program.SendUniform("lightPoint2.specular", 1.0, 1.0, 1.0); //brightestness .0 to 1.0
+	Program.SendUniform("lightPoint2.att_quadratic", 5.0f);
 
 	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0); //colouring of reflection
 	Program.SendUniform("shininess", 20.0); //shine
