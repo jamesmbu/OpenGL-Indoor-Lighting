@@ -16,6 +16,9 @@ layout (location = 0) in vec3 aVertex;
 layout (location = 2) in vec3 aNormal;
 layout (location = 3) in vec2 aTexCoord;
 
+layout (location = 4) in vec3 aTangent;
+layout (location = 5) in vec3 aBiTangent;
+
 uniform vec2 offset;
 
 out vec4 color;
@@ -24,6 +27,8 @@ out vec3 normal;
 out vec3 texCoordCubeMap; // cube map 3D texture
 
 out vec2 texCoord0; // bitmap
+
+out mat3 matrixTangent;
 
 // Shadow mapping
 uniform mat4 matrixShadow;
@@ -100,6 +105,12 @@ void main(void)
 	// calculate shadow coordinate – using the Shadow Matrix
 	mat4 matrixModel = inverse(matrixView) * matrixModelView;
 	shadowCoord = matrixShadow * matrixModel * vec4(aVertex, 1);
+
+	// calculate tangent local system transformation
+	vec3 tangent = normalize(mat3(matrixModelView) * aTangent);
+	vec3 biTangent = normalize(mat3(matrixModelView) * aBiTangent);
+	matrixTangent = mat3(tangent, biTangent, normal);
+
 }
 
 

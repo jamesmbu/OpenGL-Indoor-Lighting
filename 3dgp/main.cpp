@@ -29,6 +29,8 @@ C3dglModel table;
 C3dglModel horse;
 C3dglModel lamp;
 C3dglModel ceilinglamp;
+C3dglModel rock; 
+C3dglModel room;
 
 // bitmaps
 C3dglBitmap bm;
@@ -36,9 +38,14 @@ GLuint idTexWood;
 GLuint idTexFabric;
 GLuint idTexNone;
 GLuint idTexMetallicBrushed;
+GLuint idTexRock;
+GLuint idTexNormal;
 
 //(W2,step 2, GLSL Program
 C3dglProgram Program;
+
+// mirror angle
+float angleFrame = 45, angleMirror = -10, deltaFrame = 0, deltaMirror = 0;
 
 // Vertex buffers
 float vertices[] = {
@@ -104,6 +111,7 @@ bool Load3DModels()
 	if (!horse.load("models\\SHIRE_01.obj")) return false;
 	if (!lamp.load("models\\lamp.obj")) return false;
 	if (!ceilinglamp.load("models\\ceilinglamp.3ds")) return false;
+	if (!rock.load("models\\stone.obj")) return false;
 }
 
 bool init()
@@ -190,7 +198,6 @@ bool init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
 		GL_UNSIGNED_BYTE, bm.GetBits());
-	//glActiveTexture(GL_TEXTURE0); // for multitexturing
 	
 	// Solid
 	glGenTextures(1, &idTexNone); //blank for solid colour objects
@@ -208,6 +215,17 @@ bool init()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
 		GL_UNSIGNED_BYTE, bm.GetBits());
 	
+	// Rock
+	bm.Load("models/stone.png", GL_RGBA); if (!bm.GetBits()) return false;
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &idTexRock);
+	glBindTexture(GL_TEXTURE_2D, idTexRock);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
+		GL_UNSIGNED_BYTE, bm.GetBits());
+
+	
+
 	// Gold
 	bm.Load("models/goldy.png", GL_RGBA); if (!bm.GetBits()) return false; //golden
 	glActiveTexture(GL_TEXTURE0);
@@ -216,9 +234,26 @@ bool init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
 		GL_UNSIGNED_BYTE, bm.GetBits());
+	
+	// Normal 
+
+	bm.Load("models/normal.png", GL_RGBA); if (!bm.GetBits()) return false;
+	glActiveTexture(GL_TEXTURE2);
+	glGenTextures(1, &idTexNormal);
+	glBindTexture(GL_TEXTURE_2D, idTexNormal);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
+		GL_UNSIGNED_BYTE, bm.GetBits());
+	
+	// Setup NORMAL texturing
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, idTexNormal);
+	Program.SendUniform("textureNormal", 1);
 
 	// Send the texture info to the shaders
+	glActiveTexture(GL_TEXTURE0);
 	Program.SendUniform("texture0", 0);
+	
 	
 	// load Cube Map
 	glActiveTexture(GL_TEXTURE1);
@@ -303,6 +338,8 @@ void renderObjects(mat4 matrixView, float theta)
 	m = scale(m, vec3(0.07f, 0.07f, 0.07f));
 	lamp.render(m);
 
+	
+
 	// Pendulum mechanics
 	static float alpha = 0;
 	static float delta = 0.01f;
@@ -315,7 +352,7 @@ void renderObjects(mat4 matrixView, float theta)
 	m = matrixView;
 	m = translate(m, vec3(25, 36, -24));
 	m = rotate(m, radians(alpha), vec3(0, 0 ,0.05));
-	//cout << alpha << endl;
+	
 	m = translate(m, vec3(-25, -36, 24));
 	mat4 m1 = m; 
 	m = translate(m, vec3(25, 36, -24));
@@ -333,6 +370,7 @@ void renderObjects(mat4 matrixView, float theta)
 	Program.SendUniform("lightAmbient4.on", 0);
 
 	// Vase (reflective object) usually goes here, but is moved to the initial render function
+	
 	Program.SendUniform("materialDiffuse", .6, .3, .3); // red-ish dark brown
 	// Table 1
 	glBindTexture(GL_TEXTURE_2D, idTexWood);
@@ -675,9 +713,9 @@ void render() // updates the display
 	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
 	Program.SendUniform("spotLight1.cutoff", 50.0f);
 	Program.SendUniform("spotLight1.attenuation", 7.0f);
-
-	renderObjects(matrixView, theta);
 	renderReflective(matrixView, theta);
+	renderObjects(matrixView, theta);
+	
 	// essential for double-buffering technique
 	glutSwapBuffers();
 
@@ -701,7 +739,6 @@ void onKeyDown(unsigned char key, int x, int y)
 	case '1':
 
 		PointLightSwitching(1);
-
 		break;
 
 	case '2':

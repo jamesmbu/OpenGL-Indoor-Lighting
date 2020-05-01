@@ -12,7 +12,7 @@ uniform float shininess;
 
 //processing the texture
 uniform sampler2D texture0;
-
+uniform sampler2D textureNormal;
 
 
 in vec4 position;
@@ -32,6 +32,8 @@ uniform float reflectionPower;
 in vec4 shadowCoord;
 uniform sampler2DShadow shadowMap;
 
+in mat3 matrixTangent;
+vec3 normalNew;
 
 struct POINT
 {
@@ -100,7 +102,7 @@ vec4 SpotLight(SPOT light)
 	float spotFactor = dot(-L, D);
 	float angle_ = acos(spotFactor);
 	if (angle_ <= clamp(radians(light.cutoff),0.0f,90.0f))
-	{
+	{	
 		spotFactor = pow(spotFactor, light.attenuation);
 	}
 	else if (angle_ > clamp(radians(light.cutoff),0.0f,90.0f))
@@ -112,6 +114,9 @@ vec4 SpotLight(SPOT light)
 
 void main(void) 
 {
+	//normalNew = 2.0 * texture(textureNormal, texCoord0).xyz - vec3(1.0, 1.0, 1.0);
+	//normalNew = normalize(matrixTangent * normalNew);
+
 	outColor = color;
 
   	// multiple light points
