@@ -12,6 +12,9 @@ uniform vec3 materialDiffuse;
 uniform vec3 materialSpecular;
 uniform float shininess;
  
+// Clip plane
+uniform vec4 planeClip;
+
 layout (location = 0) in vec3 aVertex;
 layout (location = 2) in vec3 aNormal;
 layout (location = 3) in vec2 aTexCoord;
@@ -111,6 +114,7 @@ void main(void)
 	vec3 biTangent = normalize(mat3(matrixModelView) * aBiTangent);
 	matrixTangent = mat3(tangent, biTangent, normal);
 
+	gl_ClipDistance[0] = dot(inverse(matrixView) * position, planeClip);
 }
 
 

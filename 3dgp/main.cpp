@@ -31,6 +31,7 @@ C3dglModel lamp;
 C3dglModel ceilinglamp;
 C3dglModel rock; 
 C3dglModel room;
+C3dglModel mirror;
 
 // bitmaps
 C3dglBitmap bm;
@@ -112,6 +113,10 @@ bool Load3DModels()
 	if (!lamp.load("models\\lamp.obj")) return false;
 	if (!ceilinglamp.load("models\\ceilinglamp.3ds")) return false;
 	if (!rock.load("models\\stone.obj")) return false;
+	if (!room.load("models\\LivingRoomObj\\LivingRoom.obj")) return false;
+	room.loadMaterials("models\\LivingRoomObj\\");
+	if (!mirror.load("models\\mirror.obj")) return false;
+	mirror.loadMaterials("models\\");
 }
 
 bool init()
@@ -125,12 +130,15 @@ bool init()
 	//Initialise shaders, this sets up the programmable pipeline
 	C3dglShader VertexShader;
 	C3dglShader FragmentShader;
+
 	if(!VertexShader.Create(GL_VERTEX_SHADER)) return false;
 	if(!VertexShader.LoadFromFile("shaders/basic.vert")) return false;
 	if(!VertexShader.Compile()) return false;
+	
 	if(!FragmentShader.Create(GL_FRAGMENT_SHADER)) return false;
 	if(!FragmentShader.LoadFromFile("shaders/basic.frag")) return false;
 	if(!FragmentShader.Compile()) return false;
+	
 	if(!Program.Create()) return false;
 	if(!Program.Attach(VertexShader)) return false;
 	if(!Program.Attach(FragmentShader)) return false;
@@ -149,9 +157,9 @@ bool init()
 	InitialiseIndexBuffer();
 
 	// load your 3D models here!
-	
 	Load3DModels();
-	/////////////////////// SHADOW TEXTURE
+
+	/////////////////////// SHADOW TEXTURE (not used)
 	// Create shadow map texture
 	glActiveTexture(GL_TEXTURE7);
 	glGenTextures(1, &idTexShadowMap);
@@ -224,8 +232,6 @@ bool init()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bm.GetWidth(), bm.GetHeight(), 0, GL_RGBA,
 		GL_UNSIGNED_BYTE, bm.GetBits());
 
-	
-
 	// Gold
 	bm.Load("models/goldy.png", GL_RGBA); if (!bm.GetBits()) return false; //golden
 	glActiveTexture(GL_TEXTURE0);
@@ -236,7 +242,6 @@ bool init()
 		GL_UNSIGNED_BYTE, bm.GetBits());
 	
 	// Normal 
-
 	bm.Load("models/normal.png", GL_RGBA); if (!bm.GetBits()) return false;
 	glActiveTexture(GL_TEXTURE2);
 	glGenTextures(1, &idTexNormal);
@@ -324,6 +329,7 @@ void renderObjects(mat4 matrixView, float theta)
 	
 	Program.SendUniform("materialDiffuse", 1.0, 0.0, 0.0); // red
 	glBindTexture(GL_TEXTURE_2D, idTexNone);
+	
 	// Lamp 1
 	m = matrixView;
 	m = translate(m, vec3(1.0f, 9.7f, -4.0f));
@@ -338,7 +344,6 @@ void renderObjects(mat4 matrixView, float theta)
 	m = scale(m, vec3(0.07f, 0.07f, 0.07f));
 	lamp.render(m);
 
-	
 
 	// Pendulum mechanics
 	static float alpha = 0;
@@ -350,7 +355,7 @@ void renderObjects(mat4 matrixView, float theta)
 	Program.SendUniform("materialDiffuse", 0.2, 0.2, 0.2); // grey
 	Program.SendUniform("materialSpecular", 0.4, 0.97, 1.0); //colouring of reflection
 	m = matrixView;
-	m = translate(m, vec3(25, 36, -24));
+	m = translate(m, vec3(10, 40, 24));
 	m = rotate(m, radians(alpha), vec3(0, 0 ,0.05));
 	
 	m = translate(m, vec3(-25, -36, 24));
@@ -368,9 +373,15 @@ void renderObjects(mat4 matrixView, float theta)
 	Program.SendUniform("spotLight1.matrix",m);
 	glutSolidSphere(1, 32, 32);
 	Program.SendUniform("lightAmbient4.on", 0);
-
-	// Vase (reflective object) usually goes here, but is moved to the initial render function
 	
+	// room
+	Program.SendUniform("materialSpecular", 0.0, 0.0, 0.0);
+	Program.SendUniform("materialDiffuse", 1.0, 1.0, 1.0);
+	m = matrixView;
+	m = translate(m, vec3(25, 0, 0));
+	m = scale(m, vec3(0.12f, 0.12f, 0.12f));
+	room.render(m);
+
 	Program.SendUniform("materialDiffuse", .6, .3, .3); // red-ish dark brown
 	// Table 1
 	glBindTexture(GL_TEXTURE_2D, idTexWood);
@@ -383,7 +394,7 @@ void renderObjects(mat4 matrixView, float theta)
 
 	// Table 2
 	m = matrixView;
-	m = translate(m, vec3(25.0f, -1.0f, -24.0f));
+	m = translate(m, vec3(10.0f, -1.0f, 24.0f));
 	m = rotate(m, radians(180.f), vec3(0.0f, 1.0f, 0.0f));
 	m = scale(m, vec3(0.014f, 0.014f, 0.014f));
 	table.render(1, m);
@@ -431,7 +442,7 @@ void renderObjects(mat4 matrixView, float theta)
 	Program.SendUniform("materialDiffuse", 0.6, 0.1, 1.0); // purple 
 	Program.SendUniform("materialSpecular", 0.6, 0.6, 1.0);
 	m = matrixView;
-	m = translate(m, vec3(25.0f, 10.75f, -24.0f));
+	m = translate(m, vec3(10.0f, 10.75f, 24.0f));
 	m = rotate(m, radians(30.0f), vec3(0.0f, 1.0f, 0.0f));
 	// the GLUT objects require the Model View Matrix setup
 	Program.SendUniform("matrixModelView", m);
@@ -480,7 +491,9 @@ void renderObjects(mat4 matrixView, float theta)
 	m = rotate(m, radians(180.0f), vec3(1.0f, 0.0f, 0.0f));
 	m = scale(m, vec3(0.02f, 0.02f, 0.02f));
 	horse.render(m);
+	
 }
+
 void renderReflective(mat4 matrixView, float theta)
 {
 	mat4 m;
@@ -671,9 +684,13 @@ void render() // updates the display
 	// this global variable controls the animation
 	float theta = glutGet(GLUT_ELAPSED_TIME) * 0.01f;
 	prepareCubeMap(9.0f,12.7f, 0.0f, theta);
+	
 	//createShadowMap(theta, 25.0f, 12.0f, -24.0f, 26.f, 3.0f, -24.0f, 0.0f, 1.0f, 0.f);
+	
 	// clear screen and buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	
 
 	// setup the View Matrix (camera)
 	mat4 m = rotate(mat4(1.f), radians(angleTilt), vec3(1.f, 0.f, 0.f));// switch tilt off
@@ -682,7 +699,7 @@ void render() // updates the display
 	m = m * matrixView;
 	m = rotate(m, radians(angleRot), vec3(0.f, 1.f, 0.f));				// animate camera orbiting
 	matrixView = m;
-	Program.SendUniform("matrixView", matrixView);
+	//Program.SendUniform("matrixView", matrixView);
 
 	// LIGHTING and initial light settings
 	Program.SendUniform("lightAmbient.on", 1);
@@ -713,9 +730,10 @@ void render() // updates the display
 	Program.SendUniform("spotLight1.direction", 0.0, -1.0, 0.0);
 	Program.SendUniform("spotLight1.cutoff", 50.0f);
 	Program.SendUniform("spotLight1.attenuation", 7.0f);
-	renderReflective(matrixView, theta);
-	renderObjects(matrixView, theta);
 	
+	
+	renderObjects(matrixView, theta);
+	renderReflective(matrixView, theta);
 	// essential for double-buffering technique
 	glutSwapBuffers();
 
